@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
-import argparse
-from pathlib import Path
 from datetime import date
+from decimal import Decimal
+from pathlib import Path
+import argparse
+import csv
 import shutil
 
 from hoa import config
+from hoa.models import SourceTransaction
 
 DATE_PATTERNS = [
     # 12_20_2025 or 12-20-2025
@@ -73,6 +76,109 @@ def move_to_statements(file_path: Path, dry_run=False, copy_only=False) -> Path:
     return dest_path
 
 
+DESCRIPTION_RENAME = {
+    "INTEREST PAYMENT": "Interest payment",
+    "SERVICE CHARGES - PRIOR PERIOD": "Service charges for prior period",
+}
+
+
+import re
+
+
+def normalize_description(desc: str) -> str:
+    desc = desc.strip()
+    # Known replacements
+    replacements = {
+        "INTEREST PAYMENT": "Interest payment",
+        "SERVICE CHARGES - PRIOR PERIOD": "Service charges for prior period",
+    }
+    if desc in replacements:
+        return replacements[desc]
+
+    # Pattern for Venmo cashout
+    venmo_match = re.search(r"CASHOUT VENMO", desc, re.IGNORECASE)
+    if venmo_match:
+        return "Venmo cashout"
+
+    # Fallback: title case all-uppercase
+    return desc.title() if desc.isupper() else desc
+
+
+def normalize_merchant(merchant: str | None) -> str | None:
+    if not merchant:
+        return None
+    merchant = merchant.strip()
+    if "VENMO" in merchant.upper():
+        return "Venmo"
+    return merchant.title() if merchant.isupper() else merchant
+
+
+def parse_truist_csv(file_path: Path) -> list[dict]:
+    """
+    Parse a Truist CSV file and return a list of transaction dicts:
+    {
+        'account': str,       # checking or savings
+        'posted_date': date,
+        'type': str,
+        'serial': str | None,
+        'description': str,
+        'merchant': str | None,
+        'amount': Decimal,
+    }
+    """
+    transactions = []
+    current_account = None
+
+    with file_path.open(newline="", encoding="utf-8-sig") as f:
+        reader = csv.reader(f)
+
+        for row in reader:
+            if not row or all(not col.strip() for col in row):
+                continue  # skip empty rows
+
+            # Detect account code line
+            if row[0].startswith("Transactions for"):
+                current_account = row[0].split()[-1]
+                continue
+
+            # Skip header row
+            if row[0] == "Posted Date":
+                continue
+
+            # Regular transaction row
+            posted_str, trans_str, trans_type, serial, full_desc, merchant, *rest = row
+            amount_str = rest[-2]  # Amount column
+
+            try:
+                posted_date = date.fromisoformat(posted_str)
+            except ValueError:
+                # Truist format may be MM/DD/YYYY
+                month, day, year = map(int, posted_str.split("/"))
+                posted_date = date(year, month, day)
+
+            # Normalize amount
+            amount = Decimal(
+                amount_str.replace("$", "")
+                .replace(",", "")
+                .replace("(", "-")
+                .replace(")", "")
+            )
+
+            transactions.append(
+                SourceTransaction(
+                    account=current_account,
+                    posted_date=posted_date,
+                    type=trans_type.strip(),
+                    serial=serial.strip() if serial else None,
+                    description=normalize_description(full_desc),
+                    merchant=normalize_merchant(merchant),
+                    amount=amount,
+                )
+            )
+
+    return transactions
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import bank CSV files")
     parser.add_argument("files", nargs="+", help="CSV files to import")
@@ -98,10 +204,12 @@ def main() -> None:
             path, dry_run=args.dry_run, copy_only=args.copy_only
         )
 
-        # Placeholder: call importer / ledger processing
-        # importer.import_csv(canonical_path, db=args.db)
+        transactions = parse_truist_csv(canonical_path)
+        print(f"Parsed {len(transactions)} transactions from {canonical_path}")
 
-        print(f"Ready to import: {canonical_path}\n")
+        # For now, just print the first few
+        for tx in transactions:
+            print(f"{tx.sha1()} | {tx.posted_date} | {tx.amount} | {tx.description}")
 
 
 if __name__ == "__main__":
