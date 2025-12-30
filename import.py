@@ -3,12 +3,14 @@
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import Optional
 import argparse
 import csv
 import shutil
 
 from hoa import config
-from hoa.models import SourceTransaction
+from hoa.ledger import Ledger
+from hoa.models import BankAccount, Rule, SourceTransaction, TxType
 
 DATE_PATTERNS = [
     # 12_20_2025 or 12-20-2025
@@ -113,7 +115,7 @@ def normalize_merchant(merchant: str | None) -> str | None:
     return merchant.title() if merchant.isupper() else merchant
 
 
-def parse_truist_csv(file_path: Path) -> list[dict]:
+def parse_truist_csv(file_path: Path) -> list[tuple[str, SourceTransaction]]:
     """
     Parse a Truist CSV file and return a list of transaction dicts:
     {
@@ -138,7 +140,12 @@ def parse_truist_csv(file_path: Path) -> list[dict]:
 
             # Detect account code line
             if row[0].startswith("Transactions for"):
-                current_account = row[0].split()[-1]
+                # Example: "Transactions for Checking 0947"
+                suffix = row[0].split()[
+                    -1
+                ]  # "0947" - could ignore if using account type only
+                acct_str = row[0].split()[2]  # "Checking"
+                current_account = BankAccount.from_csv(acct_str)
                 continue
 
             # Skip header row
@@ -146,8 +153,13 @@ def parse_truist_csv(file_path: Path) -> list[dict]:
                 continue
 
             # Regular transaction row
+            # Keep original CSV row string
+            raw_csv_line = ",".join(row)
+
             posted_str, trans_str, trans_type, serial, full_desc, merchant, *rest = row
             amount_str = rest[-2]  # Amount column
+
+            tx_type = TxType.from_csv(trans_type)
 
             try:
                 posted_date = date.fromisoformat(posted_str)
@@ -165,18 +177,64 @@ def parse_truist_csv(file_path: Path) -> list[dict]:
             )
 
             transactions.append(
-                SourceTransaction(
-                    account=current_account,
-                    posted_date=posted_date,
-                    type=trans_type.strip(),
-                    serial=serial.strip() if serial else None,
-                    description=normalize_description(full_desc),
-                    merchant=normalize_merchant(merchant),
-                    amount=amount,
+                (
+                    raw_csv_line,
+                    SourceTransaction(
+                        account=current_account,
+                        posted_date=posted_date,
+                        type=tx_type,
+                        serial=serial.strip() if serial else None,
+                        description=normalize_description(full_desc),
+                        merchant=normalize_merchant(merchant),
+                        amount=amount,
+                    ),
                 )
             )
 
     return transactions
+
+
+def interest_rule(tx: SourceTransaction) -> Optional[str]:
+    if tx.type == TxType.credit and "interest" in (tx.description or "").lower():
+        return "income:interest"
+    return None
+
+
+def venmo_rule(tx: SourceTransaction) -> Optional[str]:
+    if tx.type == TxType.credit and "venmo" in (tx.description or "").lower():
+        return "receivables:unknown"
+    return None
+
+
+def mobile_deposit_rule(tx: SourceTransaction) -> Optional[str]:
+    if tx.type == TxType.credit and "mobile deposit" in (tx.description or "").lower():
+        return "receivables:unknown"
+    return None
+
+
+# Add other rules as needed
+rules: list[Rule] = [
+    interest_rule,
+    venmo_rule,
+    mobile_deposit_rule,
+    # add more rules here
+]
+
+
+def classify_other_side(tx: SourceTransaction) -> str:
+    for rule in rules:
+        acct = rule(tx)
+        if acct is not None:
+            return acct
+    # fallback if no rules match
+    if tx.type == TxType.credit:
+        return "receivables:unknown"
+    elif tx.type == TxType.debit:
+        return "expenses:unknown"
+    elif tx.type == TxType.fee:
+        return "expenses:bank_fee"
+    else:
+        return "uncategorized"
 
 
 def main() -> None:
@@ -189,6 +247,8 @@ def main() -> None:
     parser.add_argument("--db", help="Override path to ledger database")
 
     args = parser.parse_args()
+
+    ledger = Ledger(db_path=args.db or config.PROJECT_ROOT / "ledger.db")
 
     for filename in args.files:
         path = Path(filename).expanduser()
@@ -207,9 +267,21 @@ def main() -> None:
         transactions = parse_truist_csv(canonical_path)
         print(f"Parsed {len(transactions)} transactions from {canonical_path}")
 
-        # For now, just print the first few
-        for tx in transactions:
-            print(f"{tx.sha1()} | {tx.posted_date} | {tx.amount} | {tx.description}")
+        for raw_csv_line, tx in transactions:
+            # Persist immutable source row
+            source_hash = ledger.add_source(tx, raw_csv_line)
+
+            # Determine the other side using the rules engine
+            other_acct = classify_other_side(tx)
+
+            # Bank account posting
+            bank_amount = tx.amount if tx.type == TxType.credit else -tx.amount
+            ledger.add_entry(
+                source_hash, tx.account.value, bank_amount, memo=tx.description
+            )
+
+            # Other side posting
+            ledger.add_entry(source_hash, other_acct, -bank_amount, memo=tx.description)
 
 
 if __name__ == "__main__":
