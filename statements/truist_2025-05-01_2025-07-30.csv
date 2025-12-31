@@ -1,0 +1,18 @@
+Transactions for Checking 0947
+Posted Date,Transaction Date,Transaction Type,Check/Serial #,Full description,Merchant name,Category name,Sub-category name,Amount,Daily Posted Balance
+05/19/2025,05/19/2025,Debit,975003,Check #975003,,Cash & Checks,,($250.00),$5781.73
+05/19/2025,05/19/2025,Debit,,PAYMENT VENMO *********2315 INTERNET PAYMENT,Venmo,Other,,($500.00),$5781.73
+05/19/2025,05/19/2025,Credit,,CASHOUT VENMO 6650 JASON STEWART ACH CREDIT,Venmo,Deposits,,$500.00,$5781.73
+05/21/2025,05/21/2025,FEE,,SERVICE CHARGES - PRIOR PERIOD,,Taxes & Fees,,($5.00),$5776.73
+06/11/2025,06/11/2025,Debit,975004,Check #975004,,Cash & Checks,,($250.00),$5526.73
+06/20/2025,06/20/2025,Debit,975005,Check #975005,,Cash & Checks,,($850.00),$4676.73
+06/23/2025,06/23/2025,FEE,,SERVICE CHARGES - PRIOR PERIOD,,Taxes & Fees,,($5.00),$4671.73
+07/21/2025,07/21/2025,Debit,975006,Check #975006,,Cash & Checks,,($250.00),$4416.73
+07/21/2025,07/21/2025,FEE,,SERVICE CHARGES - PRIOR PERIOD,,Taxes & Fees,,($5.00),$4416.73
+07/28/2025,07/28/2025,Credit,,SERVICE CHARGE REFUND,,Taxes & Fees,,$30.00,$4446.73
+
+Transactions for Savings 9625
+Posted Date,Transaction Date,Transaction Type,Check/Serial #,Full description,Merchant name,Category name,Sub-category name,Amount,Daily Posted Balance
+05/30/2025,05/30/2025,Credit,,INTEREST PAYMENT,,Savings & Investments,,$0.08,$9189.60
+06/30/2025,06/30/2025,Credit,,INTEREST PAYMENT,,Savings & Investments,,$0.08,$9189.68
+

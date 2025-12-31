@@ -11,6 +11,8 @@ class TxType(str, Enum):
     credit = "credit"
     debit = "debit"
     fee = "fee"
+    deposit = "deposit"
+    check = "check"
 
     @classmethod
     def from_csv(cls, raw: str) -> "TxType":
