@@ -13,7 +13,7 @@ from typing import Sequence
 from hoa import config
 from hoa.journal import Journal
 
-from hoa.importers.bank import truist
+from hoa.importers.bank.truist import truist
 from hoa.importers import receipts, manual
 
 

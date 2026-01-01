@@ -17,7 +17,7 @@ def load_rules() -> list[Rule]:
     # Directory containing truist.py
     here = Path(__file__).resolve().parent
 
-    rules_path = here / "truist_rules.toml"
+    rules_path = here / "renaming_rules.toml"
 
     if not rules_path.exists():
         raise FileNotFoundError(f"Rules file not found: {rules_path}")

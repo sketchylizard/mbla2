@@ -1,2 +1,4 @@
 hoa/__pycache__
+hoa/importers/bank/truist/__pycache__/
 .vscode
+mbla.db
