@@ -4,7 +4,7 @@ from decimal import Decimal
 from enum import Enum
 from hoa import config
 from typing import Callable, Optional
-import hashlib
+from hashlib import sha256
 
 
 class TxType(str, Enum):
@@ -42,28 +42,60 @@ class BankAccount(str, Enum):
 
 
 @dataclass(frozen=True)
-class SourceTransaction:
-    account: BankAccount
-    posted_date: date
-    type: TxType
-    serial: Optional[str]
+class Source:
+    """
+    Provenance information for a JournalEntry.
+
+    This is a value object: it has no independent identity and
+    is always embedded in a JournalEntry.
+    """
+
+    kind: str  # 'bank_csv', 'receipt_yaml', 'manual_yaml'
+    file: str  # path relative to sources/
+    line: Optional[int]  # line number or item index within file
+    bank_code: Optional[str]  # 'truist', etc., or None
+
+
+Rule = Callable[["Source"], Optional[str]]
+
+
+def _normalize(text: str | None) -> str:
+    if not text:
+        return ""
+    return " ".join(text.strip().lower().split())
+
+
+@dataclass
+class JournalEntry:
+    posted_date: str  # ISO date
+    effective_date: str
+    tx_type: str
     description: str
-    merchant: Optional[str]
-    amount: Decimal
+    memo: str | None
+    serial: str | None
+    account: str
 
-    def sha1(self) -> str:
+    def hash(self, sequence: int | None = None) -> str:
         parts = [
-            config.BANK_CODE,
-            self.account.value if self.account else "",
-            self.posted_date.isoformat(),
-            self.type.value if self.type else "",
-            self.serial or "",
-            self.description or "",
-            self.merchant or "",
-            f"{self.amount:.2f}",
+            self.account,
+            self.posted_date,
+            self.tx_type,
+            _normalize(self.description),
+            _normalize(self.serial),
         ]
-        s = "|".join(parts)
-        return hashlib.sha1(s.encode("utf-8")).hexdigest()
+
+        if sequence is not None:
+            parts.append(str(sequence))
+
+        data = "\x1f".join(parts)
+        return sha256(data.encode("utf-8")).hexdigest()
 
 
-Rule = Callable[["SourceTransaction"], Optional[str]]
+@dataclass
+class Posting:
+    posting_id: int  # unique per journal entry
+    journal_id: int  # FK to journal_entry
+    account: str
+    amount: int
+    lot: int
+    invoice: str

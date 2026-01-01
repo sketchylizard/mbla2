@@ -5,8 +5,16 @@ from pathlib import Path
 # Project root = parent of this file (assuming config.py is in hoa/)
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
-# Root of all statements (per-bank files go under this folder)
-STATEMENTS = PROJECT_ROOT / "statements"
+SOURCES = PROJECT_ROOT / "sources"
 
-BANK_CODE = "truist"
-BANK_NAME = "Truist Bank"
+BANK = SOURCES / "bank"
+RECEIPTS = SOURCES / "receipts"
+MANUAL = SOURCES / "manual"
+
+BANKS = {
+    "truist": "Truist Bank",
+}
+
+DATABASE = PROJECT_ROOT / "mbla.db"
+
+ASSOCIATION_NAME = "Miles Branch Landowners Association"
