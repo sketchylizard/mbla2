@@ -89,7 +89,7 @@ class Journal:
                 (
                     entry.posted_date,
                     entry.effective_date,
-                    entry.tx_type,
+                    entry.type,
                     entry.description,
                     int(entry.amount * 100),  # store as integer cents
                     entry.memo,

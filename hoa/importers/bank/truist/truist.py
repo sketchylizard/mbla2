@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -9,12 +9,36 @@ import tomllib
 
 from hoa import config
 from hoa.journal import Journal
-from hoa.models import JournalEntry, Posting, Source
+from hoa.models import JournalEntry, Posting, Source, TxType
 
 RENAMING_RULES_FILE = "renaming_rules.toml"
 POSTING_RULES_FILE = "posting_rules.toml"
 
-RenamingRule = tuple[re.Pattern[str], str]
+
+@dataclass(frozen=True)
+class RenamingRule:
+    pattern: re.Pattern[str]
+    replacement: str
+    amount: Decimal | None = None
+    type: frozenset[TxType] | None = None
+
+    def matches(self, entry: JournalEntry) -> bool:
+        if self.type is not None and entry.type not in self.type:
+            print(
+                f"({entry.description}, {entry.type}, {entry.amount}) doesn't match {self.type}"
+            )
+            return False
+        if self.amount is not None and abs(entry.amount) != abs(self.amount):
+            print(
+                f"({entry.description}, {entry.type}, {entry.amount}) doesn't match {self.amount}"
+            )
+            return False
+        if not self.pattern.search(entry.description):
+            print(
+                f"({entry.description}, {entry.type}, {entry.amount}) doesn't match {str(self.pattern)}"
+            )
+            return False
+        return True
 
 
 @dataclass(frozen=True)
@@ -38,10 +62,21 @@ def load_renaming_rules() -> list[RenamingRule]:
 
     rules: list[RenamingRule] = []
     for rule in data["rule"]:
+        raw_type = rule.get("type")
+
+        if raw_type is None:
+            types = None
+        elif isinstance(raw_type, list):
+            types = frozenset(TxType[t.lower()] for t in raw_type)
+        else:
+            types = frozenset({TxType[raw_type.lower()]})
+
         rules.append(
-            (
+            RenamingRule(
                 re.compile(rule["pattern"]),
                 rule["replacement"],
+                Decimal(rule["amount"]) if "amount" in rule else None,
+                types,
             )
         )
 
@@ -75,24 +110,19 @@ renaming_rules: list[RenamingRule] = load_renaming_rules()
 posting_rules: list[PostingRule] = load_posting_rules()
 
 
-def normalize_description(
-    description: str, renaming_rules: Iterable[RenamingRule]
-) -> str:
+def apply_renaming(entry: JournalEntry, rules: list[RenamingRule]) -> JournalEntry:
     """
-    Apply the first matching normalization rule.
-    If no rule matches, return the original description.
+    Returns a new JournalEntry with the description updated according to renaming rules.
+    Falls back to normalizing the description if no rule matches.
     """
-    for pattern, replacement in renaming_rules:
-        if pattern.search(description):
-            return pattern.sub(replacement, description).strip()
+    for rule in rules:
+        if rule.matches(entry):
+            new_desc = rule.pattern.sub(rule.replacement, entry.description)
+            return replace(entry, description=new_desc)
 
-    description = description.strip()
-
-    # If it's mostly uppercase, normalize it
-    if description.isupper():
-        return description.capitalize()
-
-    return description
+    # Fallback: capitalize first letter, lowercase the rest
+    normalized_desc = entry.description.capitalize()
+    return replace(entry, description=normalized_desc)
 
 
 def normalize_text(value: str | None) -> str:
@@ -160,7 +190,7 @@ def import_file(absPath: Path, relPath: Path, journal: Journal) -> None:
                 (
                     posted_date,
                     _transaction_date,
-                    tx_type,
+                    type,
                     serial,
                     raw_desc,
                     _merchant,
@@ -176,18 +206,18 @@ def import_file(absPath: Path, relPath: Path, journal: Journal) -> None:
                     datetime.strptime(posted_date, "%m/%d/%Y").date().isoformat()
                 )
 
-                description = normalize_description(raw_desc, renaming_rules)
-
                 entry = JournalEntry(
                     posted_date=posted_date_iso,
                     effective_date=posted_date_iso,
-                    tx_type=tx_type.lower(),
-                    description=description,
+                    type=type.lower(),
+                    description=raw_desc,
                     memo=None,
                     serial=serial.strip() if serial else None,
                     account=current_account,
                     amount=amount,
                 )
+
+                entry = apply_renaming(entry, renaming_rules)
 
                 # Compute semantic hash, handle same-file collisions
                 sequence = None
@@ -223,7 +253,7 @@ def import_file(absPath: Path, relPath: Path, journal: Journal) -> None:
                 posting1 = Posting(
                     None,
                     journal_id=journal_id,
-                    account=f"Assets:{current_account}",
+                    account=f"assets:{current_account}",
                     amount=amount,
                     lot=None,
                     invoice=None,

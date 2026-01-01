@@ -69,7 +69,7 @@ def _normalize(text: str | None) -> str:
 class JournalEntry:
     posted_date: str  # ISO date
     effective_date: str
-    tx_type: str
+    type: TxType
     description: str
     memo: str | None
     serial: str | None
@@ -80,7 +80,7 @@ class JournalEntry:
         parts = [
             self.account,
             self.posted_date,
-            self.tx_type,
+            self.type,
             _normalize(self.description),
             _normalize(self.serial),
             str(self.amount),

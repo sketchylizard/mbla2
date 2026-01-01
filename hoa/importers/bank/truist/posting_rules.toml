@@ -9,3 +9,7 @@ account = "expenses:bank_fees"
 [[rule]]
 pattern = "interest payment"
 account = "income:interest"
+
+[[rule]]
+pattern = "landscaping"
+account = "expenses:landscaping"

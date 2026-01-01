@@ -33,3 +33,9 @@ replacement = "Venmo Add Funds (\\1)"
 [[rule]]
 pattern = "EDI PYMNTS ((NATIONWIDE INS)|(NWEDI-(\\d*))) FLEX(\\d*) INTERNET PAYMENT"
 replacement = "Nationwide Insurance Payment"
+
+[[rule]]
+pattern = "Check #(\\d+)"
+replacement = "San Remo Landscaping"
+amount = 250.00
+type = ["Check", "Debit"]
