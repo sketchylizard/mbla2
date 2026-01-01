@@ -1,0 +1,11 @@
+[[rule]]
+pattern = "insurance"
+account = "expenses:insurance"
+
+[[rule]]
+pattern = "service charge"
+account = "expenses:bank_fees"
+
+[[rule]]
+pattern = "interest payment"
+account = "income:interest"

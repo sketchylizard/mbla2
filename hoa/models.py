@@ -74,6 +74,7 @@ class JournalEntry:
     memo: str | None
     serial: str | None
     account: str
+    amount: Decimal
 
     def hash(self, sequence: int | None = None) -> str:
         parts = [
@@ -82,6 +83,7 @@ class JournalEntry:
             self.tx_type,
             _normalize(self.description),
             _normalize(self.serial),
+            str(self.amount),
         ]
 
         if sequence is not None:
@@ -96,6 +98,6 @@ class Posting:
     posting_id: int  # unique per journal entry
     journal_id: int  # FK to journal_entry
     account: str
-    amount: int
+    amount: Decimal
     lot: int
     invoice: str

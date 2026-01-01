@@ -30,6 +30,7 @@ class Journal:
                 effective_date  TEXT NOT NULL,        -- ISO date
                 tx_type         TEXT NOT NULL,
                 description     TEXT NOT NULL,
+                amount          INTEGER NOT NULL,     -- stored as cents
                 memo            TEXT,
                 serial          TEXT,
                 account         TEXT NOT NULL,
@@ -82,14 +83,15 @@ class Journal:
             cursor.execute(
                 """
             INSERT INTO journal_entry
-            (posted_date, effective_date, tx_type, description, memo, serial, account, source_hash, bank, source_filename, source_line_no)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (posted_date, effective_date, tx_type, description, amount, memo, serial, account, source_hash, bank, source_filename, source_line_no)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     entry.posted_date,
                     entry.effective_date,
                     entry.tx_type,
                     entry.description,
+                    int(entry.amount * 100),  # store as integer cents
                     entry.memo,
                     entry.serial,
                     entry.account,
