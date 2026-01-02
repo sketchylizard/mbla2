@@ -2,9 +2,11 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from enum import Enum
-from hoa import config
-from typing import Callable, Optional
 from hashlib import sha256
+from hoa import config
+from pathlib import Path
+from typing import Callable, Optional, Self
+import toml
 
 
 class TxType(str, Enum):
@@ -44,10 +46,10 @@ class BankAccount(str, Enum):
 @dataclass(frozen=True)
 class Source:
     """
-    Provenance information for a JournalEntry.
+    Provenance information for a Transaction.
 
     This is a value object: it has no independent identity and
-    is always embedded in a JournalEntry.
+    is always embedded in a Transaction.
     """
 
     kind: str  # 'bank_csv', 'receipt_yaml', 'manual_yaml'
@@ -65,24 +67,24 @@ def _normalize(text: str | None) -> str:
     return " ".join(text.strip().lower().split())
 
 
-@dataclass
-class JournalEntry:
-    posted_date: str  # ISO date
-    effective_date: str
+@dataclass(frozen=True)
+class Transaction:
+    posted_date: date  # ISO date
+    effective_date: date
     type: TxType
     description: str
     memo: str | None
-    serial: str | None
+    serial: int | None
     account: str
     amount: Decimal
 
     def hash(self, sequence: int | None = None) -> str:
         parts = [
             self.account,
-            self.posted_date,
+            self.posted_date.isoformat(),
             self.type,
             _normalize(self.description),
-            _normalize(self.serial),
+            str(self.serial),
             str(self.amount),
         ]
 
@@ -101,3 +103,14 @@ class Posting:
     amount: Decimal
     lot: int
     invoice: str
+
+    @classmethod
+    def from_annotation_dict(cls, d: dict) -> "Posting":
+        return cls(
+            account=d["account"],
+            amount=Decimal(str(d["amount"])),
+            lot=d.get("lot"),
+            invoice=d.get("invoice"),
+            journal_id=None,
+            posting_id=None,
+        )

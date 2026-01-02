@@ -1,0 +1,70 @@
+[[pending]]
+date = 2024-07-11
+check = 1057
+amount = 8283.00
+description = "Carolina Dock & Marine Construction"
+memo = "Dock repair"
+postings = [
+  { account = "expenses:pond", amount = 8283.00 }
+]
+
+[[pending]]
+date = 2024-07-22
+check = 975005
+amount = 67.50
+description = "Bagwell Holt Smith P.A."
+memo = "Consultation on covenant enforcement"
+postings = [
+  { account = "expenses:legal", amount = 67.50 }
+]
+
+[[pending]]
+date = 2024-08-21
+check = 975007
+amount = 600.00
+description = "Tyndell Lawn & Tree"
+memo = "Tree removal"
+postings = [
+  { account = "expenses:tree_removal", amount = 600.00 }
+]
+
+[[pending]]
+date = 2025-06-20
+check = 975005
+amount = 850.00
+description = "Smart Tree Service"
+memo = "Tree removal, XH05K-6F87W"
+postings = [
+  { account = "expenses:tree_removal", amount = 850.00}
+]
+
+[[pending]]
+date = 2025-11-17
+check = 975011
+amount = 36.99
+
+description = "Jay Sloan & Trish Welsh"
+memo = "Life preserver"
+postings = [
+  { account = "expenses:pond", amount = 36.99 }
+]
+
+[[pending]]
+date = 2025-11-25
+check = 975012
+amount = 945.00
+description = "Bagwell Holt Smith P.A."
+memo = "Consultation on covenant modifications"
+postings = [
+  { account = "expenses:legal", amount = 945.00 }
+]
+
+[[pending]]
+date = 2025-12-16
+check = 975013
+amount = 157.50
+description = "Bagwell Holt Smith P.A."
+memo = "Consultation on covenant modifications"
+postings = [
+  { account = "expenses:legal", amount = 157.50 }
+]

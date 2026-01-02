@@ -7,7 +7,7 @@ from typing import List, Optional
 from decimal import Decimal
 from datetime import date
 
-from hoa.models import JournalEntry, Posting, Source
+from hoa.models import Transaction, Posting, Source
 
 from hoa import config
 
@@ -58,14 +58,14 @@ class Journal:
         self.conn.commit()
 
     def add_entry(
-        self, entry: JournalEntry, source: Source, source_hash: str
+        self, entry: Transaction, source: Source, source_hash: str
     ) -> int | None:
         """
         Inserts a journal entry into the database.
 
         Parameters
         ----------
-        entry : JournalEntry
+        entry : Transaction
             The in-memory semantic entry.
         source : Source
             Information about the origin (filename, line number, etc.)
@@ -104,8 +104,10 @@ class Journal:
             journal_id = cursor.lastrowid
             self.conn.commit()
             return journal_id
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
             # Duplicate source_hash
+
+            print(f"IntegrityError: {e}")
             return None
 
     def add_posting(self, journal_id: int, posting: Posting) -> int:

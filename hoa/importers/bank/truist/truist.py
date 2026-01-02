@@ -2,14 +2,24 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Self
 import csv
 import re
-import tomllib
+import toml
 
 from hoa import config
+from hoa.annotation_store import (
+    AnnotationStore,
+    ResolvedAnnotation,
+    PendingAnnotation,
+)
 from hoa.journal import Journal
-from hoa.models import JournalEntry, Posting, Source, TxType
+from hoa.models import (
+    Transaction,
+    Posting,
+    Source,
+    TxType,
+)
 
 RENAMING_RULES_FILE = "renaming_rules.toml"
 POSTING_RULES_FILE = "posting_rules.toml"
@@ -22,23 +32,43 @@ class RenamingRule:
     amount: Decimal | None = None
     type: frozenset[TxType] | None = None
 
-    def matches(self, entry: JournalEntry) -> bool:
+    def matches(self, entry: Transaction) -> bool:
         if self.type is not None and entry.type not in self.type:
-            print(
-                f"({entry.description}, {entry.type}, {entry.amount}) doesn't match {self.type}"
-            )
             return False
         if self.amount is not None and abs(entry.amount) != abs(self.amount):
-            print(
-                f"({entry.description}, {entry.type}, {entry.amount}) doesn't match {self.amount}"
-            )
             return False
         if not self.pattern.search(entry.description):
-            print(
-                f"({entry.description}, {entry.type}, {entry.amount}) doesn't match {str(self.pattern)}"
-            )
             return False
         return True
+
+    @classmethod
+    def load(cls, rules_path: Path) -> list[Self]:
+        if not rules_path.exists():
+            raise FileNotFoundError(f"Rules file not found: {rules_path}")
+
+        data = toml.loads(rules_path.read_text(encoding="utf-8"))
+
+        rules: list[RenamingRule] = []
+        for rule in data["rule"]:
+            raw_type = rule.get("type")
+
+            if raw_type is None:
+                types = None
+            elif isinstance(raw_type, list):
+                types = frozenset(TxType[t.lower()] for t in raw_type)
+            else:
+                types = frozenset({TxType[raw_type.lower()]})
+
+            rules.append(
+                cls(
+                    re.compile(rule["pattern"]),
+                    rule["replacement"],
+                    Decimal(rule["amount"]) if "amount" in rule else None,
+                    types,
+                )
+            )
+
+        return rules
 
 
 @dataclass(frozen=True)
@@ -48,71 +78,35 @@ class PostingRule:
     lot: int | None = None
     invoice: str | None = None
 
+    @classmethod
+    def load(cls, rules_path: Path) -> list[Self]:
+        if not rules_path.exists():
+            raise FileNotFoundError(f"Rules file not found: {rules_path}")
 
-def load_renaming_rules() -> list[RenamingRule]:
-    # Directory containing truist.py
-    here = Path(__file__).resolve().parent
+        data = toml.loads(rules_path.read_text(encoding="utf-8"))
 
-    rules_path = here / RENAMING_RULES_FILE
-
-    if not rules_path.exists():
-        raise FileNotFoundError(f"Rules file not found: {rules_path}")
-
-    data = tomllib.loads(rules_path.read_text(encoding="utf-8"))
-
-    rules: list[RenamingRule] = []
-    for rule in data["rule"]:
-        raw_type = rule.get("type")
-
-        if raw_type is None:
-            types = None
-        elif isinstance(raw_type, list):
-            types = frozenset(TxType[t.lower()] for t in raw_type)
-        else:
-            types = frozenset({TxType[raw_type.lower()]})
-
-        rules.append(
-            RenamingRule(
-                re.compile(rule["pattern"]),
-                rule["replacement"],
-                Decimal(rule["amount"]) if "amount" in rule else None,
-                types,
+        rules: list[PostingRule] = []
+        for rule in data["rule"]:
+            rules.append(
+                cls(
+                    re.compile(rule["pattern"]),
+                    rule["account"],
+                )
             )
-        )
 
-    return rules
-
-
-def load_posting_rules() -> list[PostingRule]:
-    # Directory containing truist.py
-    here = Path(__file__).resolve().parent
-
-    rules_path = here / POSTING_RULES_FILE
-
-    if not rules_path.exists():
-        raise FileNotFoundError(f"Rules file not found: {rules_path}")
-
-    data = tomllib.loads(rules_path.read_text(encoding="utf-8"))
-
-    rules: list[PostingRule] = []
-    for rule in data["rule"]:
-        rules.append(
-            PostingRule(
-                re.compile(rule["pattern"]),
-                rule["account"],
-            )
-        )
-
-    return rules
+        return rules
 
 
-renaming_rules: list[RenamingRule] = load_renaming_rules()
-posting_rules: list[PostingRule] = load_posting_rules()
+# Directory containing truist.py
+here = Path(__file__).resolve().parent
+
+renaming_rules = RenamingRule.load(here / RENAMING_RULES_FILE)
+posting_rules = PostingRule.load(here / POSTING_RULES_FILE)
 
 
-def apply_renaming(entry: JournalEntry, rules: list[RenamingRule]) -> JournalEntry:
+def apply_renaming(entry: Transaction, rules: list[RenamingRule]) -> Transaction:
     """
-    Returns a new JournalEntry with the description updated according to renaming rules.
+    Returns a new Transaction with the description updated according to renaming rules.
     Falls back to normalizing the description if no rule matches.
     """
     for rule in rules:
@@ -140,7 +134,7 @@ def parse_amount(value: str) -> Decimal:
     return Decimal(value)
 
 
-def classify_postings(entry: JournalEntry) -> list[Posting]:
+def classify_postings(entry: Transaction) -> list[Posting]:
     for rule in posting_rules:
         if rule.pattern.search(entry.description.lower()):
             return [
@@ -157,10 +151,18 @@ def classify_postings(entry: JournalEntry) -> list[Posting]:
     return []
 
 
-def import_file(absPath: Path, relPath: Path, journal: Journal) -> None:
+def import_file(
+    absPath: Path,
+    relPath: Path,
+    journal: Journal,
+    annotations: AnnotationStore,
+) -> None:
     print(f"Importing Truist file: {relPath}")
 
     bank_code = "truist"
+
+    annotations_path = absPath.with_name(f"{absPath.stem}_annotations.toml")
+    annotations.load_resolved(annotations_path)
 
     current_account: str | None = None
     seen_hashes: dict[str, int] = {}
@@ -192,7 +194,7 @@ def import_file(absPath: Path, relPath: Path, journal: Journal) -> None:
                     _transaction_date,
                     type,
                     serial,
-                    raw_desc,
+                    description,
                     _merchant,
                     _category,
                     _subcategory,
@@ -202,17 +204,15 @@ def import_file(absPath: Path, relPath: Path, journal: Journal) -> None:
 
                 amount = parse_amount(amount_str)
 
-                posted_date_iso = (
-                    datetime.strptime(posted_date, "%m/%d/%Y").date().isoformat()
-                )
+                posted_date_iso = datetime.strptime(posted_date, "%m/%d/%Y").date()
 
-                entry = JournalEntry(
+                entry = Transaction(
                     posted_date=posted_date_iso,
                     effective_date=posted_date_iso,
                     type=type.lower(),
-                    description=raw_desc,
+                    description=description,
                     memo=None,
-                    serial=serial.strip() if serial else None,
+                    serial=int(serial.strip()) if serial else None,
                     account=current_account,
                     amount=amount,
                 )
@@ -240,12 +240,19 @@ def import_file(absPath: Path, relPath: Path, journal: Journal) -> None:
                     "truist",
                 )
 
+                # Check for resolved annotation
+                resolved = annotations.match(entry)
+                if resolved:
+                    entry = replace(
+                        entry, description=resolved.description, memo=resolved.memo
+                    )
+
                 # Attempt to insert; None if duplicate
                 journal_id = journal.add_entry(entry, source, h)
                 if journal_id is None:
                     print(
                         f"Duplicate detected (skipping): "
-                        f"{posted_date} {description} {amount}"
+                        f"{posted_date} {description} {amount} {h}"
                     )
                     continue
 
@@ -261,11 +268,66 @@ def import_file(absPath: Path, relPath: Path, journal: Journal) -> None:
 
                 posting_id1 = journal.add_posting(journal_id, posting1)
 
-                # Add classified postings
-                classified_postings = classify_postings(entry)
-                for posting in classified_postings:
+                postings = resolved.postings if resolved else classify_postings(entry)
+
+                if not postings:
+                    # We did not match any postings, create a balancing posting to "expenses:uncategorized" or "income:uncategorized"
+                    uncategorized_account = (
+                        "expenses:uncategorized"
+                        if amount < Decimal("0.00")
+                        else "income:uncategorized"
+                    )
+                    postings = [
+                        Posting(
+                            posting_id=None,
+                            journal_id=None,
+                            account=uncategorized_account,
+                            amount=-amount,
+                            lot=None,
+                            invoice=None,
+                        )
+                    ]
+                    # Add this to the resolved annotations for next time
+                    new_resolved = ResolvedAnnotation(
+                        hash=entry.hash(),
+                        description=entry.description,
+                        memo=entry.memo,
+                        postings=postings,
+                    )
+                    annotations.add_resolved(new_resolved)
+
+                total = sum(p.amount for p in postings)
+                if total + amount != Decimal("0.00"):
+                    raise ValueError(
+                        f"Postings total {total} does not offset entry amount {amount}"
+                    )
+
+                for p in postings:
+                    posting = replace(
+                        p,
+                        posting_id=None,
+                        journal_id=journal_id,
+                    )
                     posting_id = journal.add_posting(journal_id, posting)
 
             except Exception as e:
                 print(f"Error parsing line {line_no} in {relPath.name}: {e}")
                 raise
+
+        annotations.save_resolved()
+
+
+def import_files(absPath: Path, journal: Journal) -> None:
+    rel_path = absPath.relative_to(config.SOURCES)
+    print(f"Importing Truist files: {rel_path}")
+
+    annotations = AnnotationStore.load(absPath / "pending.toml")
+
+    for file_path in absPath.glob("*.csv"):
+        if file_path.is_file():
+            abs_path = file_path.resolve()
+            rel_path = abs_path.relative_to(config.SOURCES)
+            import_file(abs_path, rel_path, journal, annotations)
+
+    annotations.save_pending()
+    print("Truist import completed.")

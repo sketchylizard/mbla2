@@ -17,81 +17,48 @@ from hoa.importers.bank.truist import truist
 from hoa.importers import receipts, manual
 
 
-def normalize_source_path(path: str | Path) -> Path:
+def import_banks(journal: Journal) -> None:
     """
-    Resolve path to an absolute path and ensure it lives under config.SOURCES.
-    Returns a Path object relative to SOURCES.
+    Import all files under a given bank directory.
     """
-    p = Path(path).expanduser().resolve()
-    sources_root = config.SOURCES.resolve()
 
-    try:
-        rel = p.relative_to(sources_root)
-    except ValueError:
-        print(f"Error: {p} is not under sources directory {sources_root}")
-        return None
+    for bank_path in (config.SOURCES / "bank").glob("*"):
+        if bank_path.is_dir():
+            rel_path = bank_path.relative_to(config.SOURCES)
 
-    return rel
+            if len(rel_path.parts) < 2:
+                print(f"Error: bank source missing bank code: {rel_path}")
+                return
+
+            bank_code = rel_path.parts[1]
+
+            if bank_code == "truist":
+                truist.import_files(bank_path, journal)
+            else:
+                print(f"Error: no importer for bank '{bank_code}'")
 
 
-def dispatch_importer(abs_path: Path, rel_path: Path, journal: Journal) -> None:
+def import_receipts(journal: Journal) -> None:
     """
-    Determine the appropriate importer based on rel_path and call it.
+    Import all files under the receipts directory.
     """
-    if not rel_path.parts:
-        print(f"Error: empty path {abs_path}")
-        return
-
-    head = rel_path.parts[0]
-
-    # Bank imports
-    if head == config.BANK.name:
-        if len(rel_path.parts) < 2:
-            print(f"Error: bank source missing bank code: {rel_path}")
-            return
-        bank_code = rel_path.parts[1]
-        if bank_code == "truist":
-            truist.import_file(abs_path, rel_path, journal)
-            return
-
-        print(f"Error: no importer for bank '{bank_code}'")
-        return
-
-    # Receipt imports
-    if head == config.RECEIPTS.name:
-        print(f"Importing receipt file: {rel_path}")
-        receipts.import_file(abs_path, rel_path, journal)
-        return
-
-    # Manual entry imports
-    if head == config.MANUAL.name:
-        print(f"Importing manual entry file: {rel_path}")
-        manual.import_file(abs_path, rel_path, journal)
-        return
-
-    print(f"Error: unrecognized source path: {rel_path}")
-
-
-def import_sources(paths: Sequence[str], journal: Journal) -> None:
-    """
-    Iterate over the given paths, normalize, and dispatch each for import.
-    """
-    for p in paths:
-        abs_path = Path(p).expanduser().resolve()
-        rel_path = normalize_source_path(abs_path)
-        if rel_path is None:
-            continue
-        dispatch_importer(abs_path, rel_path, journal)
+    receipts_path = config.SOURCES / "receipts"
+    for path in receipts_path.glob("*.toml"):
+        if path.is_file():
+            abs_path = path.resolve()
+            pass
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <file_or_directory> [more files...]")
-        sys.exit(1)
 
     journal = Journal(config.DATABASE)
-    paths = sys.argv[1:]
-    import_sources(paths, journal)
+
+    sources_root = config.SOURCES.resolve()
+
+    # Parse each kind of source
+    import_banks(journal)
+    import_receipts(journal)
+
     print("Import completed.")
 
 
