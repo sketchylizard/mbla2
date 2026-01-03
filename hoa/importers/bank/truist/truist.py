@@ -2,7 +2,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Iterable, Self
+from typing import Iterable, Self, Tuple, List
 import csv
 import re
 import toml
@@ -15,14 +15,20 @@ from hoa.annotation_store import (
 )
 from hoa.journal import Journal
 from hoa.models import (
-    Transaction,
+    JournalEntry,
     Posting,
     Source,
+    Transaction,
+    TransactionAndSource,
+    TransferReducer,
     TxType,
 )
 
 RENAMING_RULES_FILE = "renaming_rules.toml"
 POSTING_RULES_FILE = "posting_rules.toml"
+
+PendingAnnotations = AnnotationStore[PendingAnnotation]
+ResolvedAnnotations = AnnotationStore[ResolvedAnnotation]
 
 
 @dataclass(frozen=True)
@@ -104,7 +110,7 @@ renaming_rules = RenamingRule.load(here / RENAMING_RULES_FILE)
 posting_rules = PostingRule.load(here / POSTING_RULES_FILE)
 
 
-def apply_renaming(entry: Transaction, rules: list[RenamingRule]) -> Transaction:
+def apply_renaming(rules: list[RenamingRule], entry: Transaction) -> Transaction:
     """
     Returns a new Transaction with the description updated according to renaming rules.
     Falls back to normalizing the description if no rule matches.
@@ -151,21 +157,172 @@ def classify_postings(entry: Transaction) -> list[Posting]:
     return []
 
 
+class ResolvedReducer:
+    def __init__(self, resolved: ResolvedAnnotations):
+        self._store = resolved
+
+    def try_reduce(
+        self,
+        items: list[TransactionAndSource],
+        index: int,
+    ) -> Tuple[int, JournalEntry, Source] | None:
+
+        tx, source = items[index]
+
+        matched = self._store.match(tx)
+        if matched == None:
+            return None
+
+        journalEntry = JournalEntry(
+            posted_date=tx.posted_date,
+            effective_date=tx.effective_date,
+            type=tx.type,
+            description=matched.description,
+            memo=matched.memo,
+            serial=tx.serial,
+            amount=tx.amount,
+            postings=[
+                *matched.postings,
+                Posting(
+                    account=tx.account,
+                    amount=-sum(p.amount for p in matched.postings),
+                ),
+            ],
+            transactions=[items[index]],
+        )
+
+        return (1, journalEntry)
+
+
+class PendingReducer:
+    def __init__(self, resolved: ResolvedAnnotations, pending: PendingAnnotations):
+        self._resolved = resolved
+        self._store = pending
+
+    def try_reduce(
+        self,
+        items: list[TransactionAndSource],
+        index: int,
+    ) -> Tuple[int, JournalEntry] | None:
+
+        tx, source = items[index]
+
+        matched = self._store.match(tx)
+        if matched == None:
+            return None
+
+        journalEntry = JournalEntry(
+            posted_date=tx.posted_date,
+            effective_date=tx.effective_date,
+            type=tx.type,
+            description=matched.description,
+            memo=matched.memo,
+            serial=tx.serial,
+            amount=tx.amount,
+            postings=[
+                *matched.postings,
+                Posting(
+                    account=tx.account,
+                    amount=-sum(p.amount for p in matched.postings),
+                ),
+            ],
+            transactions=[(tx, source)],
+        )
+
+        resolvedAnnotation = matched.resolve(tx.hash())
+        self._resolved.add(resolvedAnnotation)
+        self._store.remove(matched)
+
+        return (1, journalEntry)
+
+
+class AutoMatchReducer:
+    def __init__(self, rules: list[PostingRule]):
+        self.rules = rules
+
+    def try_reduce(
+        self,
+        items: list[TransactionAndSource],
+        index: int,
+    ) -> Tuple[int, JournalEntry, Source] | None:
+        tx, source = items[index]
+
+        for rule in self.rules:
+            if not rule.pattern.search(tx.description.lower()):
+                continue
+
+            journalEntry = JournalEntry(
+                posted_date=tx.posted_date,
+                effective_date=tx.effective_date,
+                type=tx.type,
+                description=tx.description,
+                memo=tx.memo,
+                serial=tx.serial,
+                amount=tx.amount,
+                postings=[
+                    Posting(account=tx.account, amount=tx.amount),
+                    Posting(account=rule.account, amount=-tx.amount),
+                ],
+                transactions=[items[index]],
+            )
+
+            return (1, journalEntry)
+
+        return None
+
+
+class FallbackReducer:
+    def try_reduce(
+        self,
+        items: list[TransactionAndSource],
+        index: int,
+    ) -> Tuple[int, JournalEntry, Source] | None:
+        tx, source = items[index]
+
+        counter_account = "expenses:unknown" if tx.amount < 0 else "income:unknown"
+
+        postings = [
+            Posting(account=tx.account, amount=tx.amount),
+            Posting(account=counter_account, amount=-tx.amount),
+        ]
+
+        entry = JournalEntry(
+            posted_date=tx.posted_date,
+            effective_date=tx.effective_date,
+            type=tx.type,
+            description=tx.description,
+            memo=tx.memo,
+            serial=tx.serial,
+            amount=tx.amount,
+            postings=postings,
+            transactions=[(tx, source)],
+        )
+
+        resolved = ResolvedAnnotation(
+            hash=tx.hash(),
+            description=tx.description,
+            memo=tx.memo,
+            postings=postings,
+        )
+
+        return (1, entry)
+
+
 def import_file(
     absPath: Path,
     relPath: Path,
     journal: Journal,
-    annotations: AnnotationStore,
+    pending: PendingAnnotations,
 ) -> None:
-    print(f"Importing Truist file: {relPath}")
-
     bank_code = "truist"
 
     annotations_path = absPath.with_name(f"{absPath.stem}_annotations.toml")
-    annotations.load_resolved(annotations_path)
+    resolved = ResolvedAnnotations(annotations_path, "resolved")
+    resolved.load()
 
     current_account: str | None = None
-    seen_hashes: dict[str, int] = {}
+
+    transactions: List[Tuple[Transaction, Source]] = []
 
     with absPath.open(newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
@@ -191,7 +348,7 @@ def import_file(
             try:
                 (
                     posted_date,
-                    _transaction_date,
+                    transaction_date,
                     type,
                     serial,
                     description,
@@ -205,129 +362,91 @@ def import_file(
                 amount = parse_amount(amount_str)
 
                 posted_date_iso = datetime.strptime(posted_date, "%m/%d/%Y").date()
+                effective_date_iso = datetime.strptime(
+                    transaction_date, "%m/%d/%Y"
+                ).date()
 
-                entry = Transaction(
-                    posted_date=posted_date_iso,
-                    effective_date=posted_date_iso,
-                    type=type.lower(),
-                    description=description,
-                    memo=None,
-                    serial=int(serial.strip()) if serial else None,
-                    account=current_account,
-                    amount=amount,
+                entry = apply_renaming(
+                    renaming_rules,
+                    Transaction(
+                        posted_date=posted_date_iso,
+                        effective_date=posted_date_iso,
+                        type=type.lower(),
+                        description=description,
+                        memo=None,
+                        serial=int(serial.strip()) if serial else None,
+                        account=current_account,
+                        amount=amount,
+                    ),
                 )
-
-                entry = apply_renaming(entry, renaming_rules)
-
-                # Compute semantic hash, handle same-file collisions
-                sequence = None
-                h = entry.hash()
-                if h in seen_hashes:
-                    seq = 0
-                    while True:
-                        h = entry.hash(seq)
-                        if h not in seen_hashes:
-                            sequence = seq
-                            break
-                        seq += 1
-
-                seen_hashes[h] = 1
 
                 source = Source(
                     "bank_csv",
+                    "truist",
                     str(relPath),
                     line_no,
-                    "truist",
                 )
 
-                # Check for resolved annotation
-                resolved = annotations.match(entry)
-                if resolved:
-                    entry = replace(
-                        entry, description=resolved.description, memo=resolved.memo
-                    )
-
-                # Attempt to insert; None if duplicate
-                journal_id = journal.add_entry(entry, source, h)
-                if journal_id is None:
-                    print(
-                        f"Duplicate detected (skipping): "
-                        f"{posted_date} {description} {amount} {h}"
-                    )
-                    continue
-
-                # Add bank-side posting
-                posting1 = Posting(
-                    None,
-                    journal_id=journal_id,
-                    account=f"assets:{current_account}",
-                    amount=amount,
-                    lot=None,
-                    invoice=None,
-                )
-
-                posting_id1 = journal.add_posting(journal_id, posting1)
-
-                postings = resolved.postings if resolved else classify_postings(entry)
-
-                if not postings:
-                    # We did not match any postings, create a balancing posting to "expenses:uncategorized" or "income:uncategorized"
-                    uncategorized_account = (
-                        "expenses:uncategorized"
-                        if amount < Decimal("0.00")
-                        else "income:uncategorized"
-                    )
-                    postings = [
-                        Posting(
-                            posting_id=None,
-                            journal_id=None,
-                            account=uncategorized_account,
-                            amount=-amount,
-                            lot=None,
-                            invoice=None,
-                        )
-                    ]
-                    # Add this to the resolved annotations for next time
-                    new_resolved = ResolvedAnnotation(
-                        hash=entry.hash(),
-                        description=entry.description,
-                        memo=entry.memo,
-                        postings=postings,
-                    )
-                    annotations.add_resolved(new_resolved)
-
-                total = sum(p.amount for p in postings)
-                if total + amount != Decimal("0.00"):
-                    raise ValueError(
-                        f"Postings total {total} does not offset entry amount {amount}"
-                    )
-
-                for p in postings:
-                    posting = replace(
-                        p,
-                        posting_id=None,
-                        journal_id=journal_id,
-                    )
-                    posting_id = journal.add_posting(journal_id, posting)
+                transactions.append((entry, source))
 
             except Exception as e:
                 print(f"Error parsing line {line_no} in {relPath.name}: {e}")
                 raise
 
-        annotations.save_resolved()
+    transaction_count = len(transactions)
+    transactions = [
+        (tx, src)
+        for (tx, src) in transactions
+        if journal.is_duplicate(tx.hash()) == False
+    ]
+
+    unique_transaction_count = len(transactions)
+
+    # Sort transactions by date, amount, type, description
+    transactions.sort(key=lambda pair: pair[0].sort_key())
+
+    reducers = [
+        TransferReducer(),
+        ResolvedReducer(resolved),
+        PendingReducer(resolved, pending),
+        AutoMatchReducer(posting_rules),
+        FallbackReducer(),
+    ]
+
+    created_entries = 0
+
+    i = 0
+    while i < len(transactions):
+        skip_count = 0
+        for reducer in reducers:
+            result = reducer.try_reduce(transactions, i)
+            if result is not None:
+                (skip_count, combined_entry) = result
+                journal_id = journal.add_entry(combined_entry)
+                if journal_id is not None:
+                    created_entries += 1
+                    break
+
+        i += skip_count
+
+    print(
+        f"  {relPath.stem:10s} : Parsed/unique: {transaction_count}/{unique_transaction_count} transactions, {created_entries} new journal entries."
+    )
+    resolved.save()
 
 
 def import_files(absPath: Path, journal: Journal) -> None:
     rel_path = absPath.relative_to(config.SOURCES)
     print(f"Importing Truist files: {rel_path}")
 
-    annotations = AnnotationStore.load(absPath / "pending.toml")
+    pending = PendingAnnotations(absPath / "pending.toml", "pending")
+    pending.load()
 
-    for file_path in absPath.glob("*.csv"):
+    for file_path in sorted(absPath.glob("*.csv")):
         if file_path.is_file():
             abs_path = file_path.resolve()
             rel_path = abs_path.relative_to(config.SOURCES)
-            import_file(abs_path, rel_path, journal, annotations)
+            import_file(abs_path, rel_path, journal, pending)
 
-    annotations.save_pending()
+    pending.save()
     print("Truist import completed.")

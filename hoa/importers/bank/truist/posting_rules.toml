@@ -13,3 +13,7 @@ account = "income:interest"
 [[rule]]
 pattern = "landscaping"
 account = "expenses:landscaping"
+
+[[rule]]
+pattern = "Transfer to Checking"
+account = "Checking"

@@ -5,7 +5,7 @@ from enum import Enum
 from hashlib import sha256
 from hoa import config
 from pathlib import Path
-from typing import Callable, Optional, Self
+from typing import Callable, List, Self, Tuple
 import toml
 
 
@@ -15,6 +15,7 @@ class TxType(str, Enum):
     fee = "fee"
     deposit = "deposit"
     check = "check"
+    transfer = "transfer"
 
     @classmethod
     def from_csv(cls, raw: str) -> "TxType":
@@ -53,12 +54,12 @@ class Source:
     """
 
     kind: str  # 'bank_csv', 'receipt_yaml', 'manual_yaml'
+    bank_code: str | None  # 'truist', etc., or None
     file: str  # path relative to sources/
-    line: Optional[int]  # line number or item index within file
-    bank_code: Optional[str]  # 'truist', etc., or None
+    line: int | None  # line number or item index within file
 
 
-Rule = Callable[["Source"], Optional[str]]
+Rule = Callable[["Source"], str] | None
 
 
 def _normalize(text: str | None) -> str:
@@ -69,7 +70,7 @@ def _normalize(text: str | None) -> str:
 
 @dataclass(frozen=True)
 class Transaction:
-    posted_date: date  # ISO date
+    posted_date: date
     effective_date: date
     type: TxType
     description: str
@@ -94,15 +95,23 @@ class Transaction:
         data = "\x1f".join(parts)
         return sha256(data.encode("utf-8")).hexdigest()
 
+    def sort_key(tx: Self) -> tuple[date, Decimal, str, str]:
+        return (
+            tx.posted_date,
+            abs(tx.amount),
+            tx.type,
+            tx.description,
+        )
+
 
 @dataclass
 class Posting:
-    posting_id: int  # unique per journal entry
-    journal_id: int  # FK to journal_entry
-    account: str
-    amount: Decimal
-    lot: int
-    invoice: str
+    posting_id: int = None  # unique per journal entry
+    journal_id: int = None  # FK to journal_entry
+    account: str = ""
+    amount: Decimal = Decimal(0)
+    lot: int = None
+    invoice: str = None
 
     @classmethod
     def from_annotation_dict(cls, d: dict) -> "Posting":
@@ -114,3 +123,106 @@ class Posting:
             journal_id=None,
             posting_id=None,
         )
+
+
+TransactionAndSource = Tuple[Transaction, Source]
+
+
+@dataclass(frozen=True)
+class JournalEntry:
+    posted_date: date
+    effective_date: date
+    type: TxType
+    description: str
+    memo: str | None
+    serial: int | None
+    amount: Decimal
+    postings: list[Posting]
+    transactions: List[TransactionAndSource]
+
+
+TRANSFER_KEYWORDS = (
+    "transfer from",
+    "transfer to",
+)
+
+
+def is_transfer_desc(desc: str) -> bool:
+    d = desc.lower()
+    return any(k in d for k in TRANSFER_KEYWORDS)
+
+
+@dataclass
+class TransferReducer:
+    """
+    Pairs two transactions that represent the two sides
+    of an internal account transfer.
+    """
+
+    def try_reduce(
+        self,
+        txns: list[TransactionAndSource],
+        i: int,
+    ) -> Tuple[int, JournalEntry] | None:
+
+        if i + 1 >= len(txns):
+            return None
+
+        (a, src_a) = txns[i]
+        (b, src_b) = txns[i + 1]
+
+        # --- hard requirements ---
+        if a.posted_date != b.posted_date:
+            return None
+
+        if abs(a.amount) != abs(b.amount):
+            return None
+
+        if a.amount != -b.amount:
+            return None
+
+        if a.account == b.account:
+            return None
+
+        if not (is_transfer_desc(a.description) or is_transfer_desc(b.description)):
+            return None
+
+        # --- determine canonical ordering ---
+        debit = a if a.amount < 0 else b
+        credit = b if debit is a else a
+
+        amount = abs(debit.amount)
+
+        # --- build journal entry ---
+        je = JournalEntry(
+            posted_date=a.posted_date,
+            effective_date=a.effective_date,
+            type=TxType.transfer,
+            description=f"Transfer: {credit.account} → {debit.account}",
+            memo=None,
+            serial=None,
+            amount=amount,
+            postings=[
+                Posting(
+                    posting_id=None,
+                    journal_id=None,
+                    lot=None,
+                    invoice=None,
+                    account=credit.account,
+                    amount=amount,
+                ),
+                Posting(
+                    account=debit.account,
+                    amount=-amount,
+                ),
+            ],
+            transactions=[txns[i], txns[i + 1]],
+        )
+
+        if src_a.file != src_b.file:
+            raise ValueError("Transfer source files must match")
+
+        if src_a.bank_code != src_b.bank_code:
+            raise ValueError("Transfer source bank codes must match")
+
+        return (2, je)
