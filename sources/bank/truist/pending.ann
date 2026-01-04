@@ -1,0 +1,49 @@
+date=2024-07-11
+amount=8283.00
+check=1057
+description=Carolina Dock & Marine Construction
+memo=Dock repair
+account=expenses:pond amount=8283.00
+
+date=2024-07-22
+amount=67.50
+check=975005
+description=Bagwell Holt Smith P.A.
+memo=Consultation on covenant enforcement
+account=expenses:legal amount=67.50
+
+date=2024-08-21
+amount=600.00
+check=975007
+description=Tyndell Lawn & Tree
+memo=Tree removal
+account=expenses:tree_removal amount=600.00
+
+date=2025-06-20
+amount=850.00
+check=975005
+description=Smart Tree Service
+memo=Tree removal, XH05K-6F87W
+account=expenses:tree_removal amount=850.00
+
+date=2025-11-17
+amount=36.99
+check=975011
+description=Jay Sloan & Trish Welsh
+memo=Life preserver
+account=expenses:pond amount=36.99
+
+date=2025-11-25
+amount=945.00
+check=975012
+description=Bagwell Holt Smith P.A.
+memo=Consultation on covenant modifications
+account=expenses:legal amount=945.00
+
+date=2025-12-16
+amount=157.50
+check=975013
+description=Bagwell Holt Smith P.A.
+memo=Consultation on covenant modifications
+account=expenses:legal amount=157.50
+

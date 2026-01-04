@@ -44,7 +44,7 @@ class BankAccount(str, Enum):
             raise ValueError(f"Unknown bank account type: {raw}")
 
 
-@dataclass(frozen=True)
+@dataclass
 class Source:
     """
     Provenance information for a Transaction.

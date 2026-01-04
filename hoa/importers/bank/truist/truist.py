@@ -10,8 +10,6 @@ import toml
 from hoa import config
 from hoa.annotation_store import (
     AnnotationStore,
-    ResolvedAnnotation,
-    PendingAnnotation,
 )
 from hoa.journal import Journal
 from hoa.models import (
@@ -23,11 +21,11 @@ from hoa.models import (
     TxType,
 )
 
+# Directory containing truist.py
+here = Path(__file__).resolve().parent
+
 RENAMING_RULES_FILE = "renaming_rules.toml"
 POSTING_RULES_FILE = "posting_rules.toml"
-
-PendingAnnotations = AnnotationStore[PendingAnnotation]
-ResolvedAnnotations = AnnotationStore[ResolvedAnnotation]
 
 
 @dataclass(frozen=True)
@@ -102,9 +100,6 @@ class PostingRule:
         return rules
 
 
-# Directory containing truist.py
-here = Path(__file__).resolve().parent
-
 renaming_rules = RenamingRule.load(here / RENAMING_RULES_FILE)
 posting_rules = PostingRule.load(here / POSTING_RULES_FILE)
 
@@ -156,9 +151,9 @@ def classify_postings(entry: Transaction) -> list[Posting]:
     return []
 
 
-class ResolvedReducer:
-    def __init__(self, resolved: ResolvedAnnotations):
-        self._store = resolved
+class ReconciledReducer:
+    def __init__(self, reconciled: AnnotationStore):
+        self._store = reconciled
 
     def try_reduce(
         self,
@@ -187,15 +182,15 @@ class ResolvedReducer:
                     amount=-sum(p.amount for p in matched.postings),
                 ),
             ],
-            transactions=[items[index]],
+            transactions=[tx],
         )
 
         return (1, journalEntry)
 
 
 class PendingReducer:
-    def __init__(self, resolved: ResolvedAnnotations, pending: PendingAnnotations):
-        self._resolved = resolved
+    def __init__(self, reconciled: AnnotationStore, pending: AnnotationStore):
+        self._reconciled = reconciled
         self._store = pending
 
     def try_reduce(
@@ -228,8 +223,8 @@ class PendingReducer:
             transactions=[tx],
         )
 
-        resolvedAnnotation = matched.resolve(tx.hash())
-        self._resolved.add(resolvedAnnotation)
+        reconciledAnnotation = matched.resolve(tx.hash())
+        self._reconciled.add(reconciledAnnotation)
         self._store.remove(matched)
 
         return (1, journalEntry)
@@ -295,13 +290,6 @@ class FallbackReducer:
             amount=tx.amount,
             postings=postings,
             transactions=[tx],
-        )
-
-        resolved = ResolvedAnnotation(
-            hash=tx.hash(),
-            description=tx.description,
-            memo=tx.memo,
-            postings=postings,
         )
 
         return (1, entry)
@@ -389,14 +377,14 @@ def import_file(
     absPath: Path,
     relPath: Path,
     journal: Journal,
-    pending: PendingAnnotations,
+    pending: AnnotationStore,
     previous_hashes: Set[str],
 ) -> None:
     bank_code = "truist"
 
-    annotations_path = absPath.with_name(f"{absPath.stem}_annotations.toml")
-    resolved = ResolvedAnnotations(annotations_path, "resolved")
-    resolved.load()
+    annotations_path = absPath.with_name(f"{absPath.stem}.ann")
+    reconciled = AnnotationStore(annotations_path)
+    reconciled.load()
 
     transactions = read_lines_from_csv(absPath, previous_hashes)
     transaction_count = len(transactions)
@@ -406,8 +394,8 @@ def import_file(
 
     reducers = [
         TransferReducer(),
-        ResolvedReducer(resolved),
-        PendingReducer(resolved, pending),
+        ReconciledReducer(reconciled),
+        PendingReducer(reconciled, pending),
         AutoMatchReducer(posting_rules),
         FallbackReducer(),
     ]
@@ -438,7 +426,7 @@ def import_file(
     print(
         f"  {relPath.stem:10s} : Parsed: {transaction_count} transactions, {created_entries} new journal entries."
     )
-    resolved.save()
+    reconciled.save()
 
 
 def import_files(absPath: Path, journal: Journal) -> None:
@@ -447,7 +435,7 @@ def import_files(absPath: Path, journal: Journal) -> None:
 
     previous_hashes = journal.get_hashes()
 
-    pending = PendingAnnotations(absPath / "pending.toml", "pending")
+    pending = AnnotationStore(absPath / "pending.ann")
     pending.load()
 
     for file_path in sorted(absPath.glob("*.csv")):
