@@ -78,6 +78,7 @@ class Transaction:
     serial: int | None
     account: str
     amount: Decimal
+    line: int  # line number within source file
 
     def hash(self, sequence: int | None = None) -> str:
         parts = [
@@ -125,9 +126,6 @@ class Posting:
         )
 
 
-TransactionAndSource = Tuple[Transaction, Source]
-
-
 @dataclass(frozen=True)
 class JournalEntry:
     posted_date: date
@@ -138,7 +136,7 @@ class JournalEntry:
     serial: int | None
     amount: Decimal
     postings: list[Posting]
-    transactions: List[TransactionAndSource]
+    transactions: List[Transaction]
 
 
 TRANSFER_KEYWORDS = (
@@ -161,15 +159,15 @@ class TransferReducer:
 
     def try_reduce(
         self,
-        txns: list[TransactionAndSource],
+        txns: list[Transaction],
         i: int,
     ) -> Tuple[int, JournalEntry] | None:
 
         if i + 1 >= len(txns):
             return None
 
-        (a, src_a) = txns[i]
-        (b, src_b) = txns[i + 1]
+        a = txns[i]
+        b = txns[i + 1]
 
         # --- hard requirements ---
         if a.posted_date != b.posted_date:
@@ -218,11 +216,5 @@ class TransferReducer:
             ],
             transactions=[txns[i], txns[i + 1]],
         )
-
-        if src_a.file != src_b.file:
-            raise ValueError("Transfer source files must match")
-
-        if src_a.bank_code != src_b.bank_code:
-            raise ValueError("Transfer source bank codes must match")
 
         return (2, je)

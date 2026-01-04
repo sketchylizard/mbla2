@@ -1,13 +1,14 @@
 # journal.py
 
 from __future__ import annotations
-from pathlib import Path
-import sqlite3
-from typing import List, Tuple
-from decimal import Decimal
+from dataclasses import dataclass, replace
 from datetime import date
+from decimal import Decimal
+from pathlib import Path
+from typing import List, Tuple, Set
+import sqlite3
 
-from hoa.models import Transaction, Posting, Source, TransactionAndSource
+from hoa.models import Transaction, Posting, Source
 
 from hoa import config
 
@@ -114,7 +115,7 @@ class Journal:
             ),
         )
 
-    def add_entry(self, entry: Journal) -> int | None:
+    def add_entry(self, entry: Journal, source: Source) -> int | None:
         """
         Inserts a journal entry into the database.
 
@@ -158,8 +159,8 @@ class Journal:
             for posting in entry.postings:
                 self._add_posting(journal_id, posting)
 
-            for tx, source in entry.transactions:
-                self.add_source(journal_id, source, tx.hash())
+            for tx in entry.transactions:
+                self.add_source(journal_id, replace(source, line=tx.line), tx.hash())
 
             self.conn.commit()
             return journal_id
@@ -172,25 +173,12 @@ class Journal:
     def close(self) -> None:
         self.conn.close()
 
-    def is_duplicate(self, source_hash: str) -> bool:
+    def get_hashes(self) -> Set[str]:
         """
-        Check if a journal entry with the given source_hash already exists.
-
-        Parameters
-        ----------
-        source_hash : str
-            The hash to check for uniqueness.
-
-        Returns
-        -------
-        bool
-            True if a duplicate exists, False otherwise.
+        Returns a set of all source_hashes in the journal_entry_source table.
         """
+
         cursor = self.conn.cursor()
-        cursor.execute(
-            """
-            SELECT 1 FROM journal_entry_source WHERE source_hash = ?
-            """,
-            (source_hash,),
-        )
-        return cursor.fetchone() is not None
+        cursor.execute("SELECT source_hash FROM journal_entry_source")
+        hashes = set(row[0] for row in cursor.fetchall())
+        return hashes

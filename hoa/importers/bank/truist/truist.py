@@ -2,7 +2,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Iterable, Self, Tuple, List
+from typing import Iterable, Self, Tuple, List, Set
 import csv
 import re
 import toml
@@ -19,7 +19,6 @@ from hoa.models import (
     Posting,
     Source,
     Transaction,
-    TransactionAndSource,
     TransferReducer,
     TxType,
 )
@@ -163,11 +162,11 @@ class ResolvedReducer:
 
     def try_reduce(
         self,
-        items: list[TransactionAndSource],
+        items: list[Transaction],
         index: int,
     ) -> Tuple[int, JournalEntry, Source] | None:
 
-        tx, source = items[index]
+        tx = items[index]
 
         matched = self._store.match(tx)
         if matched == None:
@@ -201,11 +200,11 @@ class PendingReducer:
 
     def try_reduce(
         self,
-        items: list[TransactionAndSource],
+        items: list[Transaction],
         index: int,
     ) -> Tuple[int, JournalEntry] | None:
 
-        tx, source = items[index]
+        tx = items[index]
 
         matched = self._store.match(tx)
         if matched == None:
@@ -226,7 +225,7 @@ class PendingReducer:
                     amount=-sum(p.amount for p in matched.postings),
                 ),
             ],
-            transactions=[(tx, source)],
+            transactions=[tx],
         )
 
         resolvedAnnotation = matched.resolve(tx.hash())
@@ -242,10 +241,10 @@ class AutoMatchReducer:
 
     def try_reduce(
         self,
-        items: list[TransactionAndSource],
+        items: list[Transaction],
         index: int,
     ) -> Tuple[int, JournalEntry, Source] | None:
-        tx, source = items[index]
+        tx = items[index]
 
         for rule in self.rules:
             if not rule.pattern.search(tx.description.lower()):
@@ -263,7 +262,7 @@ class AutoMatchReducer:
                     Posting(account=tx.account, amount=tx.amount),
                     Posting(account=rule.account, amount=-tx.amount),
                 ],
-                transactions=[items[index]],
+                transactions=[tx],
             )
 
             return (1, journalEntry)
@@ -274,10 +273,10 @@ class AutoMatchReducer:
 class FallbackReducer:
     def try_reduce(
         self,
-        items: list[TransactionAndSource],
+        items: list[Transaction],
         index: int,
     ) -> Tuple[int, JournalEntry, Source] | None:
-        tx, source = items[index]
+        tx = items[index]
 
         counter_account = "expenses:unknown" if tx.amount < 0 else "income:unknown"
 
@@ -295,7 +294,7 @@ class FallbackReducer:
             serial=tx.serial,
             amount=tx.amount,
             postings=postings,
-            transactions=[(tx, source)],
+            transactions=[tx],
         )
 
         resolved = ResolvedAnnotation(
@@ -308,23 +307,15 @@ class FallbackReducer:
         return (1, entry)
 
 
-def import_file(
-    absPath: Path,
-    relPath: Path,
-    journal: Journal,
-    pending: PendingAnnotations,
-) -> None:
-    bank_code = "truist"
-
-    annotations_path = absPath.with_name(f"{absPath.stem}_annotations.toml")
-    resolved = ResolvedAnnotations(annotations_path, "resolved")
-    resolved.load()
-
+def read_lines_from_csv(
+    file_path: Path,
+    previous_hashes: Set[str],
+) -> List[Transaction]:
     current_account: str | None = None
 
-    transactions: List[Tuple[Transaction, Source]] = []
+    transactions: List[Transaction] = []
 
-    with absPath.open(newline="", encoding="utf-8-sig") as f:
+    with file_path.open(newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
 
         for line_no, row in enumerate(reader, start=1):
@@ -377,33 +368,41 @@ def import_file(
                         serial=int(serial.strip()) if serial else None,
                         account=current_account,
                         amount=amount,
+                        line=line_no,
                     ),
                 )
 
-                source = Source(
-                    "bank_csv",
-                    "truist",
-                    str(relPath),
-                    line_no,
-                )
+                h = entry.hash()
+                if h in previous_hashes:
+                    continue  # skip duplicate
 
-                transactions.append((entry, source))
+                previous_hashes.add(h)
+                transactions.append(entry)
 
             except Exception as e:
-                print(f"Error parsing line {line_no} in {relPath.name}: {e}")
+                print(f"Error parsing line {line_no} in {file_path.name}: {e}")
                 raise
+    return transactions
 
+
+def import_file(
+    absPath: Path,
+    relPath: Path,
+    journal: Journal,
+    pending: PendingAnnotations,
+    previous_hashes: Set[str],
+) -> None:
+    bank_code = "truist"
+
+    annotations_path = absPath.with_name(f"{absPath.stem}_annotations.toml")
+    resolved = ResolvedAnnotations(annotations_path, "resolved")
+    resolved.load()
+
+    transactions = read_lines_from_csv(absPath, previous_hashes)
     transaction_count = len(transactions)
-    transactions = [
-        (tx, src)
-        for (tx, src) in transactions
-        if journal.is_duplicate(tx.hash()) == False
-    ]
-
-    unique_transaction_count = len(transactions)
 
     # Sort transactions by date, amount, type, description
-    transactions.sort(key=lambda pair: pair[0].sort_key())
+    transactions.sort(key=lambda tx: tx.sort_key())
 
     reducers = [
         TransferReducer(),
@@ -415,6 +414,13 @@ def import_file(
 
     created_entries = 0
 
+    source = Source(
+        kind="bank_csv",
+        bank_code=bank_code,
+        file=str(relPath),
+        line=None,
+    )
+
     i = 0
     while i < len(transactions):
         skip_count = 0
@@ -422,7 +428,7 @@ def import_file(
             result = reducer.try_reduce(transactions, i)
             if result is not None:
                 (skip_count, combined_entry) = result
-                journal_id = journal.add_entry(combined_entry)
+                journal_id = journal.add_entry(combined_entry, source)
                 if journal_id is not None:
                     created_entries += 1
                     break
@@ -430,7 +436,7 @@ def import_file(
         i += skip_count
 
     print(
-        f"  {relPath.stem:10s} : Parsed/unique: {transaction_count}/{unique_transaction_count} transactions, {created_entries} new journal entries."
+        f"  {relPath.stem:10s} : Parsed: {transaction_count} transactions, {created_entries} new journal entries."
     )
     resolved.save()
 
@@ -439,6 +445,8 @@ def import_files(absPath: Path, journal: Journal) -> None:
     rel_path = absPath.relative_to(config.SOURCES)
     print(f"Importing Truist files: {rel_path}")
 
+    previous_hashes = journal.get_hashes()
+
     pending = PendingAnnotations(absPath / "pending.toml", "pending")
     pending.load()
 
@@ -446,7 +454,7 @@ def import_files(absPath: Path, journal: Journal) -> None:
         if file_path.is_file():
             abs_path = file_path.resolve()
             rel_path = abs_path.relative_to(config.SOURCES)
-            import_file(abs_path, rel_path, journal, pending)
+            import_file(abs_path, rel_path, journal, pending, previous_hashes)
 
     pending.save()
     print("Truist import completed.")
