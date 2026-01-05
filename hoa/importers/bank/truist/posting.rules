@@ -1,0 +1,14 @@
+pattern: insurance
+account: expenses:insurance
+
+pattern: service charge
+account: expenses:bank_fees
+
+pattern: interest payment
+account: income:interest
+
+pattern: landscaping
+account: expenses:landscaping
+
+pattern: Transfer to Checking
+account: Checking

@@ -2,31 +2,32 @@ from dataclasses import dataclass, replace
 from datetime import datetime, date
 from decimal import Decimal
 from pathlib import Path
-from typing import Iterable, Self, Tuple, List, Set
+from typing import Self, Tuple, List
 from collections import defaultdict
 import csv
 import re
-import toml
 
 from hoa import config
 from hoa.annotation_store import (
     AnnotationStore,
 )
-from hoa.journal import Journal
-from hoa.models import (
+from hoa.journal import (
+    Journal,
     JournalEntry,
+)
+
+from hoa.models import (
     Posting,
     Source,
     Transaction,
-    TransferReducer,
     TxType,
 )
 
 # Directory containing truist.py
 here = Path(__file__).resolve().parent
 
-RENAMING_RULES_FILE = "renaming_rules.toml"
-POSTING_RULES_FILE = "posting_rules.toml"
+RENAMING_RULES_FILE = "renaming.rules"
+POSTING_RULES_FILE = "posting.rules"
 
 
 @dataclass(frozen=True)
@@ -47,30 +48,55 @@ class RenamingRule:
 
     @classmethod
     def load(cls, rules_path: Path) -> list[Self]:
+        rules: list[Self] = []
         if not rules_path.exists():
             raise FileNotFoundError(f"Rules file not found: {rules_path}")
 
-        data = toml.loads(rules_path.read_text(encoding="utf-8"))
-
-        rules: list[RenamingRule] = []
-        for rule in data["rule"]:
-            raw_type = rule.get("type")
-
-            if raw_type is None:
+        lines = rules_path.read_text(encoding="utf-8").splitlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            if line.startswith("pattern:"):
+                pattern = line[len("pattern:") :].strip()
+                replacement = None
+                amount = None
                 types = None
-            elif isinstance(raw_type, list):
-                types = frozenset(TxType[t.lower()] for t in raw_type)
-            else:
-                types = frozenset({TxType[raw_type.lower()]})
+                i += 1
+                # Parse following lines for replacement and optional fields
+                while i < len(lines):
+                    next_line = lines[i].strip()
+                    if next_line.startswith("replacement:"):
+                        replacement = next_line[len("replacement:") :].strip()
+                    elif next_line.startswith("amount:"):
+                        amount = Decimal(next_line[len("amount:") :].strip())
+                    elif next_line.startswith("type:"):
+                        raw_types = next_line[len("type:") :].strip()
+                        # Accept comma-separated or bracketed lists
+                        if raw_types.startswith("[") and raw_types.endswith("]"):
+                            raw_types = raw_types[1:-1]
+                        types = frozenset(
+                            TxType[t.strip().lower()]
+                            for t in raw_types.split(",")
+                            if t.strip()
+                        )
+                    elif next_line == "" or next_line.startswith("pattern:"):
+                        break
+                    i += 1
+                if pattern and replacement is not None:
+                    try:
+                        rule = cls(
+                            pattern=re.compile(pattern),
+                            replacement=replacement,
+                            amount=amount,
+                            type=types,
+                        )
+                        rules.append(rule)
 
-            rules.append(
-                cls(
-                    re.compile(rule["pattern"]),
-                    rule["replacement"],
-                    Decimal(rule["amount"]) if "amount" in rule else None,
-                    types,
-                )
-            )
+                    except re.error as e:
+                        print(
+                            f"Error compiling regex pattern '{pattern}': {e} at line {i}"
+                        )
+            i += 1
 
         return rules
 
@@ -87,16 +113,29 @@ class PostingRule:
         if not rules_path.exists():
             raise FileNotFoundError(f"Rules file not found: {rules_path}")
 
-        data = toml.loads(rules_path.read_text(encoding="utf-8"))
-
-        rules: list[PostingRule] = []
-        for rule in data["rule"]:
-            rules.append(
-                cls(
-                    re.compile(rule["pattern"]),
-                    rule["account"],
-                )
-            )
+        rules: list[Self] = []
+        lines = rules_path.read_text(encoding="utf-8").splitlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            if line.startswith("pattern:"):
+                pattern = line[len("pattern:") :].strip()
+                replacement = None
+                i += 1
+                # Parse following lines for replacement
+                while i < len(lines):
+                    next_line = lines[i].strip()
+                    if next_line.startswith("replacement:"):
+                        replacement = next_line[len("replacement:") :].strip()
+                    i += 1
+                if pattern and replacement is not None:
+                    rules.append(
+                        cls(
+                            pattern=re.compile(pattern),
+                            replacement=replacement,
+                        )
+                    )
+            i += 1
 
         return rules
 
@@ -150,6 +189,89 @@ def classify_postings(entry: Transaction) -> list[Posting]:
             ]
 
     return []
+
+
+TRANSFER_KEYWORDS = (
+    "transfer from",
+    "transfer to",
+)
+
+
+@dataclass
+class TransferReducer:
+    """
+    Pairs two transactions that represent the two sides
+    of an internal account transfer.
+    """
+
+    def _is_transfer_desc(self, desc: str) -> bool:
+        d = desc.lower()
+        return any(k in d for k in TRANSFER_KEYWORDS)
+
+    def try_reduce(
+        self,
+        txns: list[Transaction],
+        i: int,
+    ) -> Tuple[int, JournalEntry] | None:
+
+        if i + 1 >= len(txns):
+            return None
+
+        a = txns[i]
+        b = txns[i + 1]
+
+        # --- hard requirements ---
+        if a.posted_date != b.posted_date:
+            return None
+
+        if abs(a.amount) != abs(b.amount):
+            return None
+
+        if a.amount != -b.amount:
+            return None
+
+        if a.account == b.account:
+            return None
+
+        if not (
+            self._is_transfer_desc(a.description)
+            or self._is_transfer_desc(b.description)
+        ):
+            return None
+
+        # --- determine canonical ordering ---
+        debit = a if a.amount < 0 else b
+        credit = b if debit is a else a
+
+        amount = abs(debit.amount)
+
+        # --- build journal entry ---
+        je = JournalEntry(
+            posted_date=a.posted_date,
+            effective_date=a.effective_date,
+            type=TxType.transfer,
+            description=f"Transfer: {credit.account} → {debit.account}",
+            memo=None,
+            serial=None,
+            amount=amount,
+            postings=[
+                Posting(
+                    posting_id=None,
+                    journal_id=None,
+                    lot=None,
+                    invoice=None,
+                    account=credit.account,
+                    amount=amount,
+                ),
+                Posting(
+                    account=debit.account,
+                    amount=-amount,
+                ),
+            ],
+            transactions=[txns[i], txns[i + 1]],
+        )
+
+        return (2, je)
 
 
 class ReconciledReducer:

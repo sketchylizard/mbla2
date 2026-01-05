@@ -3,14 +3,11 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from typing import List, Self, TypeVar, Iterable
-import toml
+from typing import List
 
 from hoa.journal import Posting  # assuming this exists
 from hoa.journal import Transaction  # for entry.hash()
 from hoa.models import TxType
-
-T = TypeVar("T")
 
 # ============================================================================
 # Annotation File Grammar (Informal EBNF + Semantic Rules)
@@ -519,6 +516,10 @@ class AnnotationStore:
             if self.path.exists():
                 self.path.unlink()
             return
+
+        # make writable before writing
+        if self.path.exists():
+            self.path.chmod(0o666)
 
         with open(self.path, "w", encoding="utf-8") as f:
             for ann in self._items:

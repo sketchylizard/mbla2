@@ -8,9 +8,22 @@ from pathlib import Path
 from typing import List, Tuple, Set
 import sqlite3
 
-from hoa.models import Transaction, Posting, Source
+from hoa.models import Transaction, Posting, Source, TxType
 
 from hoa import config
+
+
+@dataclass(frozen=True)
+class JournalEntry:
+    posted_date: date
+    effective_date: date
+    type: TxType
+    description: str
+    memo: str | None
+    serial: str | None
+    amount: Decimal
+    postings: list[Posting]
+    transactions: List[Transaction]
 
 
 class Journal:
