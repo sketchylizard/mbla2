@@ -18,7 +18,7 @@ class TxType(str, Enum):
     transfer = "transfer"
 
     @classmethod
-    def from_csv(cls, raw: str) -> "TxType":
+    def from_str(cls, raw: str) -> "TxType":
         """
         Parse the CSV type string and return a TxType enum.
         Converts to uppercase to match the Enum values.
@@ -34,7 +34,7 @@ class BankAccount(str, Enum):
     savings = "savings"
 
     @classmethod
-    def from_csv(cls, raw: str) -> "BankAccount":
+    def from_str(cls, raw: str) -> "BankAccount":
         """
         Parse the account suffix or label from the CSV header.
         """

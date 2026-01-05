@@ -1,31 +1,31 @@
-pattern: ONLINE FROM (\\**)9625 - TRUIST ONLINE TRANSFER
+pattern: ONLINE FROM (\**)9625 - TRUIST ONLINE TRANSFER
 replacement: Transfer from Savings
 
-pattern: ONLINE TO (\\**)0947 - TRUIST DEPOSIT TRANSFER
+pattern: ONLINE TO (\**)0947 - TRUIST DEPOSIT TRANSFER
 replacement: Transfer to Checking
 
-pattern: TRUIST DEPOSIT TRANSFER ONLINE FROM (\\**)0947 -
+pattern: TRUIST DEPOSIT TRANSFER ONLINE FROM (\**)0947 -
 replacement: Transfer from Checking
 
-pattern: TRUIST ONLINE TRANSFER ONLINE TO (\\**)9625 -
+pattern: TRUIST ONLINE TRANSFER ONLINE TO (\**)9625 -
 replacement: Transfer to Savings
 
-pattern: (EFFECTIVE DATE (\\d\\d-\\d\\d-\\d\\d) )?INTEREST PAYMENT
+pattern: (EFFECTIVE DATE (\d\d-\d\d-\d\d) )?INTEREST PAYMENT
 replacement: Interest Payment
 
-pattern: CASHOUT VENMO (\\d+) JASON STEWART ACH CREDIT
+pattern: CASHOUT VENMO (\d+) JASON STEWART ACH CREDIT
 replacement: Venmo transfer - \\1
 
-pattern: PAYMENT VENMO ([*\\d]+) INTERNET PAYMENT
+pattern: PAYMENT VENMO ([*\d]+) INTERNET PAYMENT
 replacement: Venmo Payment (\\1)
 
-pattern: ADDFUNDS VENMO ([*\\d]+) INTERNET PAYMENT
+pattern: ADDFUNDS VENMO ([*\d]+) INTERNET PAYMENT
 replacement: Venmo Add Funds (\\1)
 
-pattern: EDI PYMNTS ((NATIONWIDE INS)|(NWEDI-(\\d*))) FLEX(\\d*) INTERNET PAYMENT
+pattern: EDI PYMNTS ((NATIONWIDE INS)|(NWEDI-(\d*))) FLEX(\d*) INTERNET PAYMENT
 replacement: Nationwide Insurance Payment
 
-pattern: Check #(\\d+)
+pattern: Check #(\d+)
 replacement: San Remo Landscaping
 amount: 250.00
 type: [Check, Debit]

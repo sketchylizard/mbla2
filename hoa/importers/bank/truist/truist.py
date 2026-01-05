@@ -120,19 +120,29 @@ class PostingRule:
             line = lines[i].strip()
             if line.startswith("pattern:"):
                 pattern = line[len("pattern:") :].strip()
-                replacement = None
+                account = None
+                lot = None
+                invoice = None
                 i += 1
-                # Parse following lines for replacement
+                # Parse following lines for lot, invoice, or amount
                 while i < len(lines):
                     next_line = lines[i].strip()
-                    if next_line.startswith("replacement:"):
-                        replacement = next_line[len("replacement:") :].strip()
+                    if next_line.startswith("lot:"):
+                        lot = next_line[len("lot:") :].strip()
+                    if next_line.startswith("invoice:"):
+                        invoice = next_line[len("invoice:") :].strip()
+                    if next_line.startswith("account:"):
+                        account = next_line[len("account:") :].strip()
                     i += 1
-                if pattern and replacement is not None:
+                if pattern and (
+                    lot is not None or invoice is not None or account is not None
+                ):
                     rules.append(
                         cls(
                             pattern=re.compile(pattern),
-                            replacement=replacement,
+                            lot=int(lot) if lot is not None else None,
+                            invoice=invoice,
+                            account=account,
                         )
                     )
             i += 1
@@ -282,7 +292,7 @@ class ReconciledReducer:
         self,
         items: list[Transaction],
         index: int,
-    ) -> Tuple[int, JournalEntry, Source] | None:
+    ) -> Tuple[int, JournalEntry] | None:
 
         tx = items[index]
 
@@ -361,7 +371,7 @@ class AutoMatchReducer:
         self,
         items: list[Transaction],
         index: int,
-    ) -> Tuple[int, JournalEntry, Source] | None:
+    ) -> Tuple[int, JournalEntry] | None:
         tx = items[index]
 
         for rule in self.rules:
@@ -393,7 +403,7 @@ class FallbackReducer:
         self,
         items: list[Transaction],
         index: int,
-    ) -> Tuple[int, JournalEntry, Source] | None:
+    ) -> Tuple[int, JournalEntry] | None:
         tx = items[index]
 
         counter_account = "expenses:unknown" if tx.amount < 0 else "income:unknown"
@@ -418,7 +428,7 @@ class FallbackReducer:
         return (1, entry)
 
 
-def read_lines_from_csv(
+def read_lines_from_str(
     file_path: Path,
 ) -> List[Transaction]:
     current_account: str | None = None
@@ -492,6 +502,9 @@ def read_lines_from_csv(
     # that appears to be a duplicate needs a unique number. This can happen when several deposits are made on the same
     # day, with the same amount and description. For instance mobile deposits of dues checks. Sort by date, amount,
     # type, description. Any adjacent transactions that match on those fields get a unique ordinal.
+
+    # Note that we include the account here, because we are only interested in distinguishing similar transactions in
+    # the same account.
     transactions.sort(
         key=lambda tx: (tx.account, tx.posted_date, tx.amount, tx.type, tx.description)
     )
@@ -502,7 +515,7 @@ def read_lines_from_csv(
         key = (tx.account, tx.posted_date, tx.amount, tx.type, tx.description)
         if key == last_key:
             ordinal_counter[key] += 1
-            replace(tx, ordinal=ordinal_counter[key])
+            tx = replace(tx, ordinal=ordinal_counter[key])
         else:
             ordinal_counter[key] = 0
             last_key = key
@@ -522,11 +535,12 @@ def import_file(
     reconciled = AnnotationStore(annotations_path)
     reconciled.load()
 
-    transactions = read_lines_from_csv(absPath)
+    transactions = read_lines_from_str(absPath)
     transaction_count = len(transactions)
 
-    # Sort transactions by date, amount, type, description. Ignore account because we're trying to find matching
-    # transactions from different accounts
+    # Sort transactions by date, amount, type, description.
+    # Note: We ignore account because we're trying to find matching transactions
+    # from different accounts.
     transactions.sort(
         key=lambda tx: (
             tx.posted_date,
@@ -573,11 +587,40 @@ def import_file(
     reconciled.save()
 
 
+def print_summary(
+    journal: Journal,
+    previous_hashes: set[str],
+    checking_before: Decimal,
+    savings_before: Decimal,
+) -> None:
+
+    checking_after = journal.get_balance("Checking 0947")
+    savings_after = journal.get_balance("Savings 9625")
+
+    print("\nACCOUNT BALANCES (after import)")
+    print("-------------------------------")
+
+    print(f"Checking 0947")
+    print(f"  Opening balance (prior):   {checking_before:.2f}")
+    # print(f"  Period activity:")
+    # print(f"    Debits (checks/fees):   -$539.00")
+    # print(f"    Credits (deposits):    +$1,200.00")
+    # print(f"  Net change:               +$661.00")
+    print(f"  Expected ending balance:  ${checking_after:.2f}")
+    print(f"")
+    print(f"Savings 9625")
+    # print(f"  Opening balance (prior):   ${savings_before:.2f}")
+    # print(f"  Period activity:           +$XX.XX")
+    print(f"  Expected ending balance:   ${savings_after:.2f}")
+
+
 def import_files(absPath: Path, journal: Journal) -> None:
     rel_path = absPath.relative_to(config.SOURCES)
     print(f"Importing Truist files: {rel_path}")
 
     previous_hashes = journal.get_hashes()
+    checking_before = journal.get_balance("Checking 0947")
+    savings_before = journal.get_balance("Savings 9625")
 
     pending = AnnotationStore(absPath / "pending.ann")
     pending.load()
@@ -589,4 +632,5 @@ def import_files(absPath: Path, journal: Journal) -> None:
             import_file(abs_path, rel_path, journal, pending)
 
     pending.save()
-    print("Truist import completed.")
+    print("Truist import completed.\n")
+    print_summary(journal, previous_hashes, checking_before, savings_before)

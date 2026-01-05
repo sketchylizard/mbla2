@@ -5,9 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import List
 
-from hoa.journal import Posting  # assuming this exists
-from hoa.journal import Transaction  # for entry.hash()
-from hoa.models import TxType
+from hoa.models import TxType, Posting, Transaction
 
 # ============================================================================
 # Annotation File Grammar (Informal EBNF + Semantic Rules)
@@ -291,7 +289,7 @@ class AnnotationParser:
             elif name == "amount":
                 pk.amount = Decimal(value)
             elif name == "type":
-                pk.type = value
+                pk.type = TxType.from_str(value)
             elif name == "check":
                 pk.serial = value
         else:
@@ -370,16 +368,6 @@ class AnnotationParser:
 # ###########################################################################
 class AnnotationStore:
     def __init__(self, path: Path):
-        self._items: List[Annotation] = []
-        self.path = path
-
-
-from pathlib import Path
-from typing import List
-
-
-class AnnotationStore:
-    def __init__(self, path: Path):
         self.path = path
         self._items: List[Annotation] = []
 
@@ -433,62 +421,16 @@ class AnnotationStore:
                         p.amount = total_amount - supplied
                         break
 
-    def _resolve_posting_amounts(self, b: AnnotationBuilder):
-        total = (
-            b.key.amount
-            if isinstance(b.key, PendingKey)
-            else self._lookup_transaction_amount(b.key.hash)
-        )
-
-        specified = sum(p.amount for p in b.postings if p.amount is not None)
-        missing = [p for p in b.postings if p.amount is None]
-
-        if len(missing) > 1:
-            raise AnnotationParserError("More than one posting is missing an amount.")
-
-        if missing:
-            remainder = total - specified
-            if remainder < 0:
-                raise AnnotationParserError(
-                    f"Posting amounts exceed transaction amount {total}."
-                )
-            missing[0].amount = remainder
-        else:
-            if specified != total:
-                raise AnnotationParserError(
-                    f"Postings do not sum to transaction amount {total}."
-                )
-
-    def _freeze_annotation(self, b: AnnotationBuilder) -> Annotation:
-        return Annotation(
-            key=b.key,
-            description=b.description,
-            memo=b.memo,
-            postings=[
-                Posting(
-                    account=p.account,
-                    amount=p.amount,
-                    lot=p.lot,
-                    invoice=p.invoice,
-                )
-                for p in b.postings
-            ],
-        )
-
-    def _lookup_transaction_amount(self, hash_: str) -> Decimal:
-        # placeholder: implement lookup if reconciled entries need amount
-        raise NotImplementedError
-
     def match(self, entry: Transaction) -> Annotation | None:
         for item in self._items:
             if item.matches(entry):
                 return item
         return None
 
-    def add(self, item: T) -> None:
+    def add(self, item: Annotation) -> None:
         self._items.append(item)
 
-    def remove(self, item: T) -> None:
+    def remove(self, item: Annotation) -> None:
         self._items.remove(item)
 
     def is_empty(self) -> bool:

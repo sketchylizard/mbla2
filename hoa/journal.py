@@ -85,8 +85,6 @@ class Journal:
         Insert a single Posting for the given journal_id.
         posting_id is automatically assigned based on existing postings.
         """
-        if abs(posting.amount) == Decimal(8283.00):
-            print("Debug: Adding posting with amount 8283.00")
         cursor = self.conn.cursor()
         cursor.execute(
             """
@@ -128,7 +126,36 @@ class Journal:
             ),
         )
 
-    def add_entry(self, entry: Journal, source: Source) -> int | None:
+    def _validate_entry(self, entry: JournalEntry) -> None:
+        posting_accounts = []
+
+        total: Decimal = 0
+        for p in entry.postings:
+            posting_accounts.append(p.account)
+            if p.amount == 0:
+                raise ValueError(
+                    f"Zero-amount posting in account '{p.account}' "
+                    f"for entry '{entry.description}'"
+                )
+            total += p.amount
+
+        if total != Decimal(0):
+            raise ValueError(
+                f"JournalEntry postings do not balance to zero: {total} "
+                f"for entry '{entry.description}' on {entry.posted_date}"
+            )
+
+        # We have at least once source transaction (maybe two for transfers)
+        # Make sure each source account is only listed once.
+        for tx in entry.transactions:
+            if posting_accounts.count(tx.account) != 1:
+                raise ValueError(
+                    f"Source transaction account '{tx.account}' "
+                    f"not found exactly once in postings for entry "
+                    f"'{entry.description}' on {entry.posted_date}"
+                )
+
+    def add_entry(self, entry: JournalEntry, source: Source) -> int | None:
         """
         Inserts a journal entry into the database.
 
@@ -148,6 +175,8 @@ class Journal:
             None if the source_hash already exists.
         """
         try:
+            self._validate_entry(entry)
+
             cursor = self.conn.cursor()
             cursor.execute(
                 """
@@ -195,3 +224,39 @@ class Journal:
         cursor.execute("SELECT source_hash FROM journal_entry_source")
         hashes = set(row[0] for row in cursor.fetchall())
         return hashes
+
+    def get_balance(
+        self,
+        account: str,
+        *,
+        as_of: date | None = None,
+    ) -> Decimal:
+        """
+        Return the balance of an account.
+
+        Balance is defined as the sum of postings.amount
+        using posted_date semantics.
+
+        If as_of is provided, only journal entries with
+        posted_date <= as_of are included.
+        """
+        sql = """
+        SELECT
+            COALESCE(SUM(p.amount), 0)
+        FROM posting p
+        JOIN journal_entry j
+          ON j.journal_id = p.journal_id
+        WHERE p.account = :account
+          AND (:as_of IS NULL OR j.posted_date <= :as_of)
+        """
+
+        params = {
+            "account": account,
+            "as_of": as_of.isoformat() if as_of else None,
+        }
+
+        cur = self.conn.execute(sql, params)
+        row = cur.fetchone()
+
+        # row[0] is guaranteed not NULL because of COALESCE
+        return Decimal(int(row[0])) / 100
