@@ -75,34 +75,25 @@ class Transaction:
     type: TxType
     description: str
     memo: str | None
-    serial: int | None
+    serial: str | None
     account: str
     amount: Decimal
     line: int  # line number within source file
+    ordinal: int = 0  # differentiate same-day entries
 
-    def hash(self, sequence: int | None = None) -> str:
+    def hash(self) -> str:
         parts = [
             self.account,
             self.posted_date.isoformat(),
             self.type,
             _normalize(self.description),
-            str(self.serial),
+            self.serial or "",
             str(self.amount),
+            str(self.ordinal),
         ]
-
-        if sequence is not None:
-            parts.append(str(sequence))
 
         data = "\x1f".join(parts)
         return sha256(data.encode("utf-8")).hexdigest()
-
-    def sort_key(tx: Self) -> tuple[date, Decimal, str, str]:
-        return (
-            tx.posted_date,
-            abs(tx.amount),
-            tx.type,
-            tx.description,
-        )
 
 
 @dataclass
@@ -133,7 +124,7 @@ class JournalEntry:
     type: TxType
     description: str
     memo: str | None
-    serial: int | None
+    serial: str | None
     amount: Decimal
     postings: list[Posting]
     transactions: List[Transaction]

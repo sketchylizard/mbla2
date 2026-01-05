@@ -1,8 +1,9 @@
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from pathlib import Path
 from typing import Iterable, Self, Tuple, List, Set
+from collections import defaultdict
 import csv
 import re
 import toml
@@ -297,7 +298,6 @@ class FallbackReducer:
 
 def read_lines_from_csv(
     file_path: Path,
-    previous_hashes: Set[str],
 ) -> List[Transaction]:
     current_account: str | None = None
 
@@ -353,23 +353,38 @@ def read_lines_from_csv(
                         type=type.lower(),
                         description=description,
                         memo=None,
-                        serial=int(serial.strip()) if serial else None,
+                        serial=serial.strip() if serial else None,
                         account=current_account,
                         amount=amount,
                         line=line_no,
                     ),
                 )
 
-                h = entry.hash()
-                if h in previous_hashes:
-                    continue  # skip duplicate
-
-                previous_hashes.add(h)
                 transactions.append(entry)
 
             except Exception as e:
                 print(f"Error parsing line {line_no} in {file_path.name}: {e}")
                 raise
+
+    # Check for transactions that look like duplicates. We assume no duplicates within a given file, so any transaction
+    # that appears to be a duplicate needs a unique number. This can happen when several deposits are made on the same
+    # day, with the same amount and description. For instance mobile deposits of dues checks. Sort by date, amount,
+    # type, description. Any adjacent transactions that match on those fields get a unique ordinal.
+    transactions.sort(
+        key=lambda tx: (tx.account, tx.posted_date, tx.amount, tx.type, tx.description)
+    )
+
+    last_key: Tuple[str, date, Decimal, str, str] | None = None
+    ordinal_counter = defaultdict(int)
+    for tx in transactions:
+        key = (tx.account, tx.posted_date, tx.amount, tx.type, tx.description)
+        if key == last_key:
+            ordinal_counter[key] += 1
+            replace(tx, ordinal=ordinal_counter[key])
+        else:
+            ordinal_counter[key] = 0
+            last_key = key
+
     return transactions
 
 
@@ -378,7 +393,6 @@ def import_file(
     relPath: Path,
     journal: Journal,
     pending: AnnotationStore,
-    previous_hashes: Set[str],
 ) -> None:
     bank_code = "truist"
 
@@ -386,11 +400,19 @@ def import_file(
     reconciled = AnnotationStore(annotations_path)
     reconciled.load()
 
-    transactions = read_lines_from_csv(absPath, previous_hashes)
+    transactions = read_lines_from_csv(absPath)
     transaction_count = len(transactions)
 
-    # Sort transactions by date, amount, type, description
-    transactions.sort(key=lambda tx: tx.sort_key())
+    # Sort transactions by date, amount, type, description. Ignore account because we're trying to find matching
+    # transactions from different accounts
+    transactions.sort(
+        key=lambda tx: (
+            tx.posted_date,
+            abs(tx.amount),
+            tx.type,
+            tx.description,
+        )
+    )
 
     reducers = [
         TransferReducer(),
@@ -442,7 +464,7 @@ def import_files(absPath: Path, journal: Journal) -> None:
         if file_path.is_file():
             abs_path = file_path.resolve()
             rel_path = abs_path.relative_to(config.SOURCES)
-            import_file(abs_path, rel_path, journal, pending, previous_hashes)
+            import_file(abs_path, rel_path, journal, pending)
 
     pending.save()
     print("Truist import completed.")

@@ -152,11 +152,12 @@ class Annotation:
             return self.key.hash == entry.hash()
         else:
             pending_key = self.key
-            if pending_key.date != entry.posted_date:
+            # Pending dates will always be earlier than or equal to posted date
+            if pending_key.date > entry.posted_date:
                 return False
             if pending_key.amount != abs(entry.amount):
                 return False
-            if pending_key.type != entry.type:
+            if pending_key.type and pending_key.type != entry.type:
                 return False
             if pending_key.serial and pending_key.serial != entry.serial:
                 return False
@@ -545,3 +546,5 @@ class AnnotationStore:
                         line += f" invoice={p.invoice}"
                     f.write(line + "\n")
                 f.write("\n")  # blank line between annotations
+
+        self.path.chmod(0o444)  # read-only

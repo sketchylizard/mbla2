@@ -1,3 +1,10 @@
+date=2024-01-02
+amount=539.00
+check=1056
+description=Nationwide Insurance Payment
+memo=Partial payment
+account=expenses:insurance
+
 date=2024-07-11
 amount=8283.00
 check=1057
@@ -46,4 +53,3 @@ check=975013
 description=Bagwell Holt Smith P.A.
 memo=Consultation on covenant modifications
 account=expenses:legal amount=157.50
-
