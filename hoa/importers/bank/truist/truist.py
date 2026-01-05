@@ -1,9 +1,9 @@
+from collections import defaultdict
 from dataclasses import dataclass, replace
 from datetime import datetime, date
 from decimal import Decimal
 from pathlib import Path
 from typing import Self, Tuple, List
-from collections import defaultdict
 import csv
 import re
 
@@ -587,40 +587,11 @@ def import_file(
     reconciled.save()
 
 
-def print_summary(
-    journal: Journal,
-    previous_hashes: set[str],
-    checking_before: Decimal,
-    savings_before: Decimal,
-) -> None:
-
-    checking_after = journal.get_balance("Checking 0947")
-    savings_after = journal.get_balance("Savings 9625")
-
-    print("\nACCOUNT BALANCES (after import)")
-    print("-------------------------------")
-
-    print(f"Checking 0947")
-    print(f"  Opening balance (prior):   {checking_before:.2f}")
-    # print(f"  Period activity:")
-    # print(f"    Debits (checks/fees):   -$539.00")
-    # print(f"    Credits (deposits):    +$1,200.00")
-    # print(f"  Net change:               +$661.00")
-    print(f"  Expected ending balance:  ${checking_after:.2f}")
-    print(f"")
-    print(f"Savings 9625")
-    # print(f"  Opening balance (prior):   ${savings_before:.2f}")
-    # print(f"  Period activity:           +$XX.XX")
-    print(f"  Expected ending balance:   ${savings_after:.2f}")
-
-
 def import_files(absPath: Path, journal: Journal) -> None:
     rel_path = absPath.relative_to(config.SOURCES)
     print(f"Importing Truist files: {rel_path}")
 
     previous_hashes = journal.get_hashes()
-    checking_before = journal.get_balance("Checking 0947")
-    savings_before = journal.get_balance("Savings 9625")
 
     pending = AnnotationStore(absPath / "pending.ann")
     pending.load()
@@ -633,4 +604,3 @@ def import_files(absPath: Path, journal: Journal) -> None:
 
     pending.save()
     print("Truist import completed.\n")
-    print_summary(journal, previous_hashes, checking_before, savings_before)

@@ -6,9 +6,9 @@ Entry point for importing source files into the HOA Journal.
 Dispatches to specialized importer modules based on file location.
 """
 
-import sys
+from decimal import Decimal
 from pathlib import Path
-from typing import Sequence
+import locale
 
 from hoa import config
 from hoa.journal import Journal
@@ -49,9 +49,46 @@ def import_receipts(journal: Journal) -> None:
             pass
 
 
+def print_summary(
+    journal: Journal,
+    checking_before: Decimal,
+    savings_before: Decimal,
+) -> None:
+
+    checking_after = journal.get_balance("Checking 0947")
+    savings_after = journal.get_balance("Savings 9625")
+
+    print("\nACCOUNT BALANCES (after import)")
+    print("-------------------------------")
+
+    print(f"Checking 0947")
+    print(
+        f"  Opening balance (prior):   {locale.currency(checking_before, grouping=True)}"
+    )
+    # print(f"  Period activity:")
+    # print(f"    Debits (checks/fees):   -$539.00")
+    # print(f"    Credits (deposits):    +$1,200.00")
+    # print(f"  Net change:               +$661.00")
+    print(
+        f"  Expected ending balance:  {locale.currency(checking_after, grouping=True)}"
+    )
+    print(f"")
+    print(f"Savings 9625")
+    print(
+        f"  Opening balance (prior):   {locale.currency(savings_before, grouping=True)}"
+    )
+    # print(f"  Period activity:           +$XX.XX")
+    print(
+        f"  Expected ending balance:   {locale.currency(savings_after, grouping=True)}"
+    )
+
+
 def main():
 
     journal = Journal(config.DATABASE)
+
+    checking_before = journal.get_balance("Checking 0947")
+    savings_before = journal.get_balance("Savings 9625")
 
     sources_root = config.SOURCES.resolve()
 
@@ -59,7 +96,7 @@ def main():
     import_banks(journal)
     import_receipts(journal)
 
-    print("Import completed.")
+    print_summary(journal, checking_before, savings_before)
 
 
 if __name__ == "__main__":
