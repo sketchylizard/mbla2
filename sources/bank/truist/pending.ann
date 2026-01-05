@@ -53,3 +53,58 @@ check=975013
 description=Bagwell Holt Smith P.A.
 memo=Consultation on covenant modifications
 account=expenses:legal amount=157.50
+
+date=2025-12-29
+amount=150.00
+description=Lynn Stephenson
+account=assets:receivables lot=10 invoice=20261000 reference=8976
+
+
+date=2025-12-29
+amount=150.00
+description=Erfid
+account=assets:receivables lot=30 invoice=20263000 reference=61693
+
+date=2025-12-29
+amount=200.00
+description=Natalie Worthington
+account=assets:receivables lot=20 invoice=20262000 reference=483
+
+date=2025-12-29
+amount=200.00
+description=Karen Ladd
+account=assets:receivables lot=40 invoice=20264000 reference=1616
+
+date=2025-12-29
+amount=200.00
+description=Venmo: Ken Tunnell
+account=assets:receivables lot=2 invoice=20260200
+
+date=2025-12-29
+amount=200.00
+description=Venmo: Kim Stewart
+account=assets:receivables lot=18 invoice=20261800
+
+date=2025-12-29
+amount=200.00
+description=Venmo: Joan Cahill
+account=assets:receivables lot=16 invoice=20261600
+
+date=2025-12-29
+amount=200.00
+description=Venmo: Carmen Rice
+account=assets:receivables lot=24 invoice=20262400
+
+date=2026-01-02
+amount=350.00
+description=Venmo: multiple
+account=assets:receivables lot=47 invoice=20264700 amount=200
+account=assets:receivables lot=34 invoice=20263400 amount=200
+
+date=2026-01-05
+amount=800.00
+description=Venmo: multiple
+account=assets:receivables lot=14 invoice=20261400 amount=200
+account=assets:receivables lot=48 invoice=20264800 amount=200
+account=assets:receivables lot=43 invoice=20264400 amount=200
+account=assets:receivables lot=17 invoice=20261700 amount=200

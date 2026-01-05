@@ -322,6 +322,7 @@ class AnnotationParser:
         amount = None
         lot = None
         invoice = None
+        reference = None  # depositor's check # or other reference
 
         for p in parts[1:]:
             if "=" not in p:
@@ -335,12 +336,20 @@ class AnnotationParser:
                 lot = int(v)
             elif k == "invoice":
                 invoice = v
+            elif k == "reference":
+                reference = v
             else:
                 raise AnnotationParserError(
                     f"Line {self.line_no}: unknown posting field '{k}'"
                 )
 
-        return Posting(account=account, amount=amount, lot=lot, invoice=invoice)
+        return Posting(
+            account=account,
+            amount=amount,
+            lot=lot,
+            invoice=invoice,
+            reference=reference,
+        )
 
     # -----------------------------
     # Helpers
@@ -487,6 +496,8 @@ class AnnotationStore:
                         line += f" lot={p.lot}"
                     if p.invoice is not None:
                         line += f" invoice={p.invoice}"
+                    if p.reference is not None:
+                        line += f" reference={p.reference}"
                     f.write(line + "\n")
                 f.write("\n")  # blank line between annotations
 

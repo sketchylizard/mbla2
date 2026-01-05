@@ -46,7 +46,7 @@ class Journal:
                 description     TEXT NOT NULL,
                 amount          INTEGER NOT NULL,     -- stored as cents
                 memo            TEXT,
-                serial          TEXT
+                serial          TEXT -- check # or other serial number
             )
             """
         )
@@ -60,6 +60,7 @@ class Journal:
             amount INTEGER NOT NULL,
             lot INTEGER,
             invoice TEXT,
+            reference TEXT, -- check # or other reference
             FOREIGN KEY(journal_id) REFERENCES journal_entry(journal_id)
         )
         """
@@ -89,8 +90,8 @@ class Journal:
         cursor.execute(
             """
         INSERT INTO posting
-        (journal_id, account, amount, lot, invoice)
-        VALUES (?, ?, ?, ?, ?)
+        (journal_id, account, amount, lot, invoice, reference)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
             (
                 journal_id,
@@ -98,6 +99,7 @@ class Journal:
                 int(posting.amount * 100),  # store as integer cents
                 posting.lot,
                 posting.invoice,
+                posting.reference,
             ),
         )
         posting_id = cursor.lastrowid

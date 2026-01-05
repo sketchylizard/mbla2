@@ -104,6 +104,7 @@ class Posting:
     amount: Decimal = Decimal(0)
     lot: int = None
     invoice: str = None
+    reference: str = None
 
     @classmethod
     def from_annotation_dict(cls, d: dict) -> "Posting":
