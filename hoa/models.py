@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -6,7 +8,106 @@ from hashlib import sha256
 from hoa import config
 from pathlib import Path
 from typing import Callable, List, Self, Tuple
-import toml
+
+from dataclasses import dataclass, replace, asdict
+from datetime import date
+from decimal import Decimal
+from typing import Optional, Iterable, TextIO, Dict, Any
+import json
+
+
+@dataclass(frozen=True)
+class FinancialEvent:
+    # Identity / ordering
+    event_id: str
+    posted_date: date
+    amount: Decimal
+    ordinal: int = 0
+
+    # Accounts (may be inferred later)
+    from_account: str | None = None
+    to_account: str | None = None
+    type: str | None = None  # "debit", "credit", "transfer".
+
+    # Descriptive information
+    description: str = ""
+    memo: str | None = None
+    category: str | None = None
+    confidence: float | None = None
+
+    # Source provenance (never destroyed)
+    source_file: str | None = None
+    source_line: int | None = None
+    source_id: str | None = None  # Venmo ID, check number, ref #
+    source_type: str | None = None  # "DEBIT", "Payment", etc.
+
+    # Annotation / reconciliation
+    annotation_id: str | None = None
+    pending: bool = False
+
+    # ---- helpers ----
+
+    def with_updates(self, **changes) -> "FinancialEvent":
+        return replace(self, **changes)
+
+    # ---- NDJSON I/O ----
+
+    def to_dict(self) -> Dict[str, Any]:
+        d = asdict(self)
+        d["posted_date"] = self.posted_date.isoformat()
+        d["amount"] = str(self.amount)
+        return d
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "FinancialEvent":
+        return cls(
+            event_id=data["event_id"],
+            posted_date=date.fromisoformat(data["posted_date"]),
+            amount=Decimal(data["amount"]),
+            type=data.get("type"),
+            ordinal=data.get("ordinal", 0),
+            from_account=data.get("from_account"),
+            to_account=data.get("to_account"),
+            description=data.get("description", ""),
+            memo=data.get("memo"),
+            category=data.get("category"),
+            confidence=data.get("confidence"),
+            source_file=data.get("source_file"),
+            source_line=data.get("source_line"),
+            source_id=data.get("source_id"),
+            source_type=data.get("source_type"),
+            annotation_id=data.get("annotation_id"),
+            pending=data.get("pending", False),
+        )
+
+    @classmethod
+    def read_ndjson(cls, stream: TextIO) -> Iterable["FinancialEvent"]:
+        for line_no, line in enumerate(stream, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                yield cls.from_dict(json.loads(line))
+            except Exception as e:
+                raise RuntimeError(f"Invalid FinancialEvent at line {line_no}: {e}")
+
+    @classmethod
+    def write_ndjson(
+        cls,
+        events: Iterable["FinancialEvent"],
+        stream: TextIO,
+    ) -> None:
+        class PathEncoder(json.JSONEncoder):
+            def default(self, obj):
+                from pathlib import Path
+
+                if isinstance(obj, Path):
+                    return str(obj)
+                return super().default(obj)
+
+        for ev in events:
+            json.dump(ev.to_dict(), stream, separators=(",", ":"), cls=PathEncoder)
+            stream.write("\n")
 
 
 class TxType(str, Enum):
