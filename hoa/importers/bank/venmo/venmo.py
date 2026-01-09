@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,27 +40,6 @@ def make_event_id(
     if source_id:
         return f"venmo:{source_id}"
     return f"venmo:{source_file.name}:{line_no}"
-
-
-# ----------------------------
-# CSV parsing
-# ----------------------------
-
-
-def read_lines_from_csv(file_path: Path) -> Iterable[dict]:
-    """
-    Yield raw CSV rows from a Venmo export.
-
-    Venmo CSV format:
-    - First two lines are headers / metadata
-    - Third line contains column names
-    """
-    with file_path.open(newline="", encoding="utf-8-sig") as f:
-        next(f)  # skip metadata
-        next(f)  # skip metadata
-        reader = csv.DictReader(f)
-        for line_no, row in enumerate(reader, start=3):
-            yield line_no, row
 
 
 # ----------------------------
@@ -179,62 +159,68 @@ class UnknownVenmoType(Exception):
         self.venmo_type = venmo_type
 
 
-def extract_events(file_path: Path) -> List[FinancialEvent]:
+def extract_events(path: Path) -> List[FinancialEvent]:
     events: List[FinancialEvent] = []
 
-    for line_no, row in read_lines_from_csv(file_path):
-        # Skip rows without a Venmo ID
-        tx_id = (row.get("ID") or "").strip()
-        if not tx_id:
-            continue
+    with path.open(newline="", encoding="utf-8-sig") as f:
+        next(f)  # skip metadata
+        next(f)  # skip metadata
+        reader = csv.DictReader(f)
 
-        try:
-            posted_date = datetime.fromisoformat(row["Datetime"]).date()
-            event_id = make_event_id(
-                source_file=file_path,
-                line_no=line_no,
-                source_id=tx_id,
-            )
+        for line_no, row in enumerate(reader, start=3):
 
-            source_type = row["Type"].strip().lower()
-            venmo_class = VENMO_TYPE_MAP.get(source_type)
+            # Skip rows without a Venmo ID
+            tx_id = (row.get("ID") or "").strip()
+            if not tx_id:
+                continue
 
-            if venmo_class is None:
-                raise UnknownVenmoType(source_type)
-
-            ctx = VenmoContext(
-                amount=parse_amount(row["Amount (total)"]),
-                venmo_type=source_type,
-                from_=row.get("From", "").strip(),
-                to=row.get("To", "").strip(),
-                funding_source=row.get("Funding Source", "").strip(),
-                destination=row.get("Destination", "").strip(),
-            )
-
-            result = VENMO_HANDLERS[venmo_class](ctx)
-
-            note = (row.get("Note") or "").strip()
-            note = note.replace("\n", " | ")
-
-            events.append(
-                FinancialEvent(
-                    event_id=event_id,
-                    posted_date=posted_date,
-                    amount=abs(ctx.amount),
-                    description=result["counterparty"],
-                    memo=note or None,
-                    from_account=result["from_account"],
-                    to_account=result["to_account"],
-                    type=result["actual_type"],
-                    source_file=file_path,
-                    source_line=line_no,
+            try:
+                posted_date = datetime.fromisoformat(row["Datetime"]).date()
+                event_id = make_event_id(
+                    source_file=path,
+                    line_no=line_no,
                     source_id=tx_id,
-                    source_type=source_type,
                 )
-            )
 
-        except Exception as e:
-            raise RuntimeError(f"Error parsing {file_path.name}:{line_no}: {e}") from e
+                source_type = row["Type"].strip().lower()
+                venmo_class = VENMO_TYPE_MAP.get(source_type)
+
+                if venmo_class is None:
+                    raise UnknownVenmoType(source_type)
+
+                ctx = VenmoContext(
+                    amount=parse_amount(row["Amount (total)"]),
+                    venmo_type=source_type,
+                    from_=row.get("From", "").strip(),
+                    to=row.get("To", "").strip(),
+                    funding_source=row.get("Funding Source", "").strip(),
+                    destination=row.get("Destination", "").strip(),
+                )
+
+                result = VENMO_HANDLERS[venmo_class](ctx)
+
+                note = (row.get("Note") or "").strip()
+                note = note.replace("\n", " | ")
+
+                events.append(
+                    FinancialEvent(
+                        event_id=event_id,
+                        posted_date=posted_date,
+                        amount=abs(ctx.amount),
+                        description=result["counterparty"],
+                        memo=note or None,
+                        from_account=result["from_account"],
+                        to_account=result["to_account"],
+                        type=result["actual_type"],
+                        source_file=path,
+                        source_line=line_no,
+                        source_id=tx_id,
+                        source_type=source_type,
+                    )
+                )
+
+            except Exception as e:
+                raise RuntimeError(f"Error parsing {path.name}:{line_no}: {e}") from e
 
     return events
 
@@ -242,24 +228,6 @@ def extract_events(file_path: Path) -> List[FinancialEvent]:
 # ----------------------------
 # CLI
 # ----------------------------
-
-
-def main(argv: list[str]) -> int:
-    if not argv:
-        print("Usage: venmo.py <venmo-export.csv> [...]", file=sys.stderr)
-        return 2
-
-    all_events: List[FinancialEvent] = []
-
-    for arg in argv:
-        path = Path(arg)
-        if not path.exists():
-            print(f"File not found: {path}", file=sys.stderr)
-            return 2
-        all_events.extend(extract_events(path))
-
-    FinancialEvent.write_ndjson(all_events, sys.stdout)
-    return 0
 
 
 def iter_csv_files(args: list[str]) -> list[Path]:

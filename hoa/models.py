@@ -22,7 +22,6 @@ class FinancialEvent:
     event_id: str
     posted_date: date
     amount: Decimal
-    ordinal: int = 0
 
     # Accounts (may be inferred later)
     from_account: str | None = None
@@ -32,18 +31,12 @@ class FinancialEvent:
     # Descriptive information
     description: str = ""
     memo: str | None = None
-    category: str | None = None
-    confidence: float | None = None
 
     # Source provenance (never destroyed)
     source_file: str | None = None
     source_line: int | None = None
     source_id: str | None = None  # Venmo ID, check number, ref #
     source_type: str | None = None  # "DEBIT", "Payment", etc.
-
-    # Annotation / reconciliation
-    annotation_id: str | None = None
-    pending: bool = False
 
     # ---- helpers ----
 
@@ -65,19 +58,14 @@ class FinancialEvent:
             posted_date=date.fromisoformat(data["posted_date"]),
             amount=Decimal(data["amount"]),
             type=data.get("type"),
-            ordinal=data.get("ordinal", 0),
             from_account=data.get("from_account"),
             to_account=data.get("to_account"),
             description=data.get("description", ""),
             memo=data.get("memo"),
-            category=data.get("category"),
-            confidence=data.get("confidence"),
             source_file=data.get("source_file"),
             source_line=data.get("source_line"),
             source_id=data.get("source_id"),
             source_type=data.get("source_type"),
-            annotation_id=data.get("annotation_id"),
-            pending=data.get("pending", False),
         )
 
     @classmethod
