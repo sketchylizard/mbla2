@@ -28,7 +28,7 @@ def parse_amount(value: str) -> Decimal:
 def make_event_id(
     source_file: Path,
     line_no: int,
-    source_id: Optional[str],
+    reference: str | None = None,
 ) -> str:
     """
     Stable, reproducible event identifier.
@@ -37,8 +37,8 @@ def make_event_id(
     - Venmo transaction ID (if present)
     - fallback to file + line number
     """
-    if source_id:
-        return f"venmo:{source_id}"
+    if reference:
+        return f"venmo:{reference}"
     return f"venmo:{source_file.name}:{line_no}"
 
 
@@ -179,7 +179,7 @@ def extract_events(path: Path) -> List[FinancialEvent]:
                 event_id = make_event_id(
                     source_file=path,
                     line_no=line_no,
-                    source_id=tx_id,
+                    reference=tx_id,
                 )
 
                 source_type = row["Type"].strip().lower()
@@ -214,7 +214,7 @@ def extract_events(path: Path) -> List[FinancialEvent]:
                         type=result["actual_type"],
                         source_file=path,
                         source_line=line_no,
-                        source_id=tx_id,
+                        reference=tx_id,
                         source_type=source_type,
                     )
                 )

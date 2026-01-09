@@ -27,6 +27,7 @@ class FinancialEvent:
     from_account: str | None = None
     to_account: str | None = None
     type: str | None = None  # "debit", "credit", "transfer".
+    reference: str | None = None  # Venmo ID, check number, ref #
 
     # Descriptive information
     description: str = ""
@@ -35,13 +36,26 @@ class FinancialEvent:
     # Source provenance (never destroyed)
     source_file: str | None = None
     source_line: int | None = None
-    source_id: str | None = None  # Venmo ID, check number, ref #
     source_type: str | None = None  # "DEBIT", "Payment", etc.
 
     # ---- helpers ----
 
     def with_updates(self, **changes) -> "FinancialEvent":
         return replace(self, **changes)
+
+    def hash(self) -> str:
+        parts = [
+            self.from_account or "",
+            self.to_account or "",
+            self.posted_date.isoformat(),
+            self.type,
+            _normalize(self.description),
+            str(self.amount),
+            str(self.event_id),
+        ]
+
+        data = "\x1f".join(parts)
+        return sha256(data.encode("utf-8")).hexdigest()
 
     # ---- NDJSON I/O ----
 
@@ -60,11 +74,11 @@ class FinancialEvent:
             type=data.get("type"),
             from_account=data.get("from_account"),
             to_account=data.get("to_account"),
+            reference=data.get("reference"),
             description=data.get("description", ""),
             memo=data.get("memo"),
             source_file=data.get("source_file"),
             source_line=data.get("source_line"),
-            source_id=data.get("source_id"),
             source_type=data.get("source_type"),
         )
 

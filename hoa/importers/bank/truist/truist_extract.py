@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import sys
-import csv
-from pathlib import Path
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import List, DefaultDict, Tuple
-from dataclasses import dataclass
+import csv
+import re
+import sys
 
 from hoa.models import FinancialEvent
 
@@ -44,6 +45,70 @@ def normalize_account(name: str) -> str:
     if "savings" in name or "9625" in name:
         return "truist:savings"
     return "truist:unknown"
+
+
+def _fix_accounts(
+    active_account: str, description: str, type: str, amount: Decimal
+) -> dict:
+    """
+    If the description matches a known transfer pattern, return the from_account, to_account, type, and amount.
+    Otherwise, deduce the from/to account from the sign of the amount.
+    """
+    match = re.match(r"ONLINE (FROM|TO) \**(\d+)", description)
+    if match:
+        direction = match.group(1)
+        other_account = "assets:" + normalize_account(match.group(2))
+
+        if direction == "FROM":
+            assert amount > 0, f"Expected positive amount for {description}"
+            return {
+                "from": other_account,
+                "to": active_account,
+                "description": f"Transfer from {other_account}",
+                "type": "transfer",
+                "amount": amount,
+            }
+
+        if direction == "TO":
+            assert amount < 0, f"Expected negative amount for {description}"
+            return {
+                "from": active_account,
+                "to": other_account,
+                "description": f"Transfer to {other_account}",
+                "type": "transfer",
+                "amount": abs(amount),
+            }
+
+        raise ValueError(
+            f"Unexpected direction {direction} in description: {description}"
+        )
+
+    match = re.match(r"CASHOUT VENMO (\d+) JASON STEWART ACH CREDIT", description)
+    if match:
+        other_account = "assets:venmo"
+        return {
+            "from": "assets:venmo",
+            "to": active_account,
+            "description": f"Transfer from Venmo {match.group(1)}",
+            "type": "transfer",
+            "amount": amount,
+        }
+
+    if amount < 0:
+        return {
+            "from": active_account,
+            "to": None,
+            "description": description,
+            "type": type,
+            "amount": abs(amount),
+        }
+
+    return {
+        "from": None,
+        "to": active_account,
+        "description": description,
+        "amount": amount,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +156,7 @@ def extract_one_account(
         row = csv.DictReader([line], fieldnames=headers).__next__()
         posted_date = parse_date(row["Posted Date"])
 
-        type = row.get("Transaction Type", "").strip().lower()
+        source_type = row.get("Transaction Type", "").strip().lower()
         counters[(posted_date, type)] += 1
         ordinal = counters[(posted_date, type)]
         event_id = f"{id_prefix}:{posted_date}:{type}:{ordinal:02}"
@@ -100,34 +165,26 @@ def extract_one_account(
         if check_number:
             event_id += f":{check_number}"
 
-        # Truist does NOT give explicit counterpart accounts reliably
-        from_account = None
-        to_account = account
-
         # Amount sign convention:
         amount = parse_amount(row["Amount"])
-        # Positive = money into account
-        # Negative = money out
-        if amount < 0:
-            from_account = account
-            to_account = None
-            amount = abs(amount)
 
         description = row.get("Full description", "").strip()
+
+        values = _fix_accounts(account, description, source_type, amount)
 
         event = FinancialEvent(
             event_id=event_id,
             posted_date=posted_date,
             amount=amount,
-            type=type,
-            from_account=from_account,
-            to_account=to_account,
-            description=description,
+            type=values.get("type") or source_type,
+            from_account=values["from"],
+            to_account=values["to"],
+            reference=check_number or None,
+            description=values["description"],
             memo=None,
             source_file=str(path),
             source_line=line_no,
-            source_id=check_number or None,
-            source_type=type,
+            source_type=source_type,
         )
 
         events.append(event)

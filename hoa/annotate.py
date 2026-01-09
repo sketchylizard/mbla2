@@ -113,12 +113,14 @@ def annotate(events: List[FinancialEvent]) -> List[FinancialEvent]:
             flush_pending()
             pending_bank = bank
             pending_store = AnnotationStore(src.with_name("pending.ann"))
+            pending_store.load()
 
         # --- Source file boundary (reconciled annotations) ------------------
         if src != reconciled_file:
             flush_reconciled()
             reconciled_file = src
             reconciled_store = AnnotationStore(src.with_suffix(".ann"))
+            reconciled_store.load()
 
         # --- 1. Reconciled annotations -------------------------------------
         match = reconciled_store.match(event) if reconciled_store else None
@@ -132,7 +134,7 @@ def annotate(events: List[FinancialEvent]) -> List[FinancialEvent]:
         match = pending_store.match(event) if pending_store else None
         if match:
             pending_store.remove(match)
-            reconciled_rule = pending_store.resolve(event)
+            reconciled_rule = match.resolve(event.hash())
             reconciled_store.add(reconciled_rule)
 
             event = event.apply_annotation(reconciled_rule)

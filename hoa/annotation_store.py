@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import List
 
-from hoa.models import TxType, Posting, Transaction
+from hoa.models import TxType, FinancialEvent, Posting, Transaction
 
 # ============================================================================
 # Annotation File Grammar (Informal EBNF + Semantic Rules)
@@ -45,12 +45,12 @@ from hoa.models import TxType, Posting, Transaction
 #       "date"   "=" <YYYY-MM-DD> NEWLINE
 #       "amount" "=" <decimal>    NEWLINE
 #       "type"   "=" <identifier> NEWLINE
-#       [ "serial" "=" <string> NEWLINE ]
+#       [ "reference" "=" <string> NEWLINE ]
 #
 # Semantic rules:
 #   - Reconciled entries MUST contain only a hash key.
 #   - Pending entries MUST contain date, amount, and type.
-#   - serial is optional and participates in matching if present.
+#   - reference is optional and participates in matching if present.
 #
 # ---------------------------------------------------------------------------
 # 2. General fields (optional)
@@ -117,7 +117,7 @@ class PendingKey:
     date: date | None = None
     amount: Decimal | None = None
     type: TxType | None = None
-    serial: str | None = None
+    reference: str | None = None
 
 
 @dataclass
@@ -154,7 +154,26 @@ class Annotation:
                 return False
             if pending_key.type and pending_key.type != entry.type:
                 return False
-            if pending_key.serial and pending_key.serial != entry.serial:
+            if pending_key.reference and pending_key.reference != entry.serial:
+                return False
+            return True
+
+    def matches(self, entry: FinancialEvent) -> bool:
+        """Check if this resolved annotation matches the given journal entry."""
+
+        # Check to see if we have a hash (reconciled) or a pending key
+        if self.is_reconciled:
+            return self.key.hash == entry.hash()
+        else:
+            pending_key = self.key
+            # Pending dates will always be earlier than or equal to posted date
+            if pending_key.date > entry.posted_date:
+                return False
+            if pending_key.amount != abs(entry.amount):
+                return False
+            if pending_key.type and pending_key.type != entry.type:
+                return False
+            if pending_key.reference and pending_key.reference != entry.reference:
                 return False
             return True
 
@@ -291,7 +310,7 @@ class AnnotationParser:
             elif name == "type":
                 pk.type = TxType.from_str(value)
             elif name == "check":
-                pk.serial = value
+                pk.reference = value
         else:
             raise AnnotationParserError(
                 f"Line {self.line_no}: unknown key field '{name}'"
@@ -436,6 +455,12 @@ class AnnotationStore:
                 return item
         return None
 
+    def match(self, entry: FinancialEvent) -> Annotation | None:
+        for item in self._items:
+            if item.matches(entry):
+                return item
+        return None
+
     def add(self, item: Annotation) -> None:
         self._items.append(item)
 
@@ -446,28 +471,6 @@ class AnnotationStore:
         return not self._items
 
     def save(self) -> None:
-        def to_toml(obj):
-            if isinstance(obj, Decimal):
-                return float(obj)
-            if hasattr(obj, "__dict__"):
-                d = {}
-                for k, v in obj.__dict__.items():
-                    if k.startswith("_"):
-                        continue
-                    if k == "postings" and isinstance(v, list):
-                        d[k] = [to_toml(p) for p in v]
-                    else:
-                        d[k] = to_toml(v)
-                return d
-            if isinstance(obj, list):
-                return [to_toml(x) for x in obj]
-            return obj
-
-        if self.is_empty():
-            if self.path.exists():
-                self.path.unlink()
-            return
-
         # make writable before writing
         if self.path.exists():
             self.path.chmod(0o666)
@@ -482,8 +485,8 @@ class AnnotationStore:
                     f.write(f"amount={pk.amount}\n")
                     if pk.type:
                         f.write(f"type={pk.type}\n")
-                    if pk.serial:
-                        f.write(f"check={pk.serial}\n")
+                    if pk.reference:
+                        f.write(f"check={pk.reference}\n")
                 if ann.description:
                     f.write(f"description={ann.description}\n")
                 if ann.memo:
