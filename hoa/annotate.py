@@ -14,7 +14,7 @@ from typing import Iterable, List, Optional
 # These are assumed based on our discussions.
 # Adjust import paths if needed.
 from hoa.models import FinancialEvent
-from hoa.annotation_store import AnnotationStore
+from hoa.annotation_store import AnnotationStore, Annotation
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +62,17 @@ def read_events_from_files(paths: List[str]) -> List[FinancialEvent]:
                 events.extend(read_events_from_stream(f))
 
     return events
+
+
+def apply_annotation(event: FinancialEvent, annotation: Annotation) -> FinancialEvent:
+
+    return event.with_updates(
+        type=annotation.type,
+        from_account=annotation.from_account,
+        to_account=annotation.to_account,
+        reference=annotation.reference,
+        description=annotation.description,
+    )
 
 
 # ---------------------------------------------------------------------------

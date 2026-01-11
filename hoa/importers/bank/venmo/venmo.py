@@ -10,7 +10,8 @@ from typing import List, Iterable, Optional
 import csv
 import sys
 
-from hoa.models import FinancialEvent
+from hoa.models import FinancialEvent, Source
+from hoa import accounts
 
 
 # ----------------------------
@@ -26,8 +27,7 @@ def parse_amount(value: str) -> Decimal:
 
 
 def make_event_id(
-    source_file: Path,
-    line_no: int,
+    source: Source,
     reference: str | None = None,
 ) -> str:
     """
@@ -39,7 +39,7 @@ def make_event_id(
     """
     if reference:
         return f"venmo:{reference}"
-    return f"venmo:{source_file.name}:{line_no}"
+    return f"venmo:{source.file}:{source.line_no}"
 
 
 # ----------------------------
@@ -73,22 +73,6 @@ class VenmoContext:
     destination: str | None
 
 
-def normalize_account(account: str) -> str:
-    """
-    Normalize Venmo account names to a consistent format.
-    For example, "Venmo balance" becomes "assets:venmo"
-    """
-    account = account.strip().lower()
-    if account == "venmo balance":
-        return "assets:venmo"
-    elif account.startswith("bank account"):
-        return f"external:{account}"
-    elif account.startswith("card"):
-        return f"external:{account}"
-    else:
-        return f"external:{account}"
-
-
 def normalize_payment_parties(venmo_type, from_, to):
     if venmo_type == "charge":
         # Venmo swaps roles
@@ -101,7 +85,7 @@ def normalize_payment_parties(venmo_type, from_, to):
 def handle_add_funds(ctx: VenmoContext):
     return dict(
         actual_type="transfer",
-        from_account=normalize_account(ctx.funding_source),
+        from_account=accounts.normalize(ctx.funding_source),
         to_account="assets:venmo",
         counterparty=None,
     )
@@ -111,7 +95,7 @@ def handle_transfer_out(ctx: VenmoContext):
     return dict(
         actual_type="transfer",
         from_account="assets:venmo",
-        to_account=normalize_account(ctx.destination),
+        to_account=accounts.normalize(ctx.destination),
         counterparty=None,
     )
 
@@ -123,19 +107,19 @@ def handle_payment(ctx: VenmoContext):
         # Me paying someone
         actual_type = "debit"
         from_account = (
-            normalize_account(ctx.funding_source)
+            accounts.normalize(ctx.funding_source)
             if ctx.funding_source
             else "assets:venmo"
         )
-        to_account = (None,)
-        counterparty = (payee,)
+        to_account = None
+        counterparty = payee
         assert payer == "Jason Stewart"
     else:
         # Someone paying me
-        actual_type = ("credit",)
-        from_account = (None,)
-        to_account = ("assets:venmo",)
-        counterparty = (ctx.from_,)
+        actual_type = "credit"
+        from_account = None
+        to_account = "assets:venmo"
+        counterparty = ctx.from_
         assert payee == "Jason Stewart"
 
     return dict(
@@ -175,12 +159,10 @@ def extract_events(path: Path) -> List[FinancialEvent]:
                 continue
 
             try:
+                source = Source(file=str(path), line=line_no)
+
                 posted_date = datetime.fromisoformat(row["Datetime"]).date()
-                event_id = make_event_id(
-                    source_file=path,
-                    line_no=line_no,
-                    reference=tx_id,
-                )
+                event_id = make_event_id(source, reference=tx_id)
 
                 source_type = row["Type"].strip().lower()
                 venmo_class = VENMO_TYPE_MAP.get(source_type)
@@ -212,10 +194,8 @@ def extract_events(path: Path) -> List[FinancialEvent]:
                         from_account=result["from_account"],
                         to_account=result["to_account"],
                         type=result["actual_type"],
-                        source_file=path,
-                        source_line=line_no,
                         reference=tx_id,
-                        source_type=source_type,
+                        source=source,
                     )
                 )
 

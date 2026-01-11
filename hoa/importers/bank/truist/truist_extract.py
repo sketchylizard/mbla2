@@ -10,8 +10,8 @@ import csv
 import re
 import sys
 
-from hoa.models import FinancialEvent
-
+from hoa.models import FinancialEvent, Source
+from hoa import accounts
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -35,18 +35,6 @@ def parse_date(value: str) -> str:
     return date
 
 
-def normalize_account(name: str) -> str:
-    """
-    Normalize Truist account names into canonical account paths.
-    """
-    name = name.lower()
-    if "checking" in name or "0947" in name:
-        return "truist:checking"
-    if "savings" in name or "9625" in name:
-        return "truist:savings"
-    return "truist:unknown"
-
-
 def _fix_accounts(
     active_account: str, description: str, type: str, amount: Decimal
 ) -> dict:
@@ -57,7 +45,7 @@ def _fix_accounts(
     match = re.match(r"ONLINE (FROM|TO) \**(\d+)", description)
     if match:
         direction = match.group(1)
-        other_account = "assets:" + normalize_account(match.group(2))
+        other_account = accounts.normalize(match.group(2))
 
         if direction == "FROM":
             assert amount > 0, f"Expected positive amount for {description}"
@@ -103,6 +91,8 @@ def _fix_accounts(
             "amount": abs(amount),
         }
 
+    assert amount > 0, f"Expected non-negative amount for {description}"
+
     return {
         "from": None,
         "to": active_account,
@@ -122,7 +112,7 @@ def extract_one_account(
     f: __file__,
     path: Path,
     line_no: int,
-) -> List[FinancialEvent]:
+) -> Tuple[str, List[FinancialEvent], int] | None:
     # An account section starts with the account name, followed by a CSV header, then the transactions.
     events: List[FinancialEvent] = []
 
@@ -133,16 +123,16 @@ def extract_one_account(
         line = f.readline()
         line_no += 1
         if not line:
-            return (events, line_no)
+            return None
         if line.strip():
             break
 
     if not line:
-        return (events, line_no)
+        return None
 
-    id_prefix = normalize_account(line)
+    account = accounts.normalize(line)
     # Add the chart of accounts prefix to the account name
-    account = f"assets:{id_prefix}"
+    id_prefix = account.replace("assets:", "")
 
     headers = f.readline().strip().split(",")
     line_no += 1
@@ -157,9 +147,9 @@ def extract_one_account(
         posted_date = parse_date(row["Posted Date"])
 
         source_type = row.get("Transaction Type", "").strip().lower()
-        counters[(posted_date, type)] += 1
-        ordinal = counters[(posted_date, type)]
-        event_id = f"{id_prefix}:{posted_date}:{type}:{ordinal:02}"
+        counters[(posted_date, source_type)] += 1
+        ordinal = counters[(posted_date, source_type)]
+        event_id = f"{id_prefix}:{posted_date}:{str(source_type)}:{ordinal:02}"
 
         check_number = row.get("Check/Serial #", "").strip()
         if check_number:
@@ -175,21 +165,69 @@ def extract_one_account(
         event = FinancialEvent(
             event_id=event_id,
             posted_date=posted_date,
-            amount=amount,
+            amount=values["amount"],
             type=values.get("type") or source_type,
             from_account=values["from"],
             to_account=values["to"],
             reference=check_number or None,
             description=values["description"],
             memo=None,
-            source_file=str(path),
-            source_line=line_no,
-            source_type=source_type,
+            source=Source(str(path), line_no),
         )
 
         events.append(event)
 
-    return (events, line_no)
+    return (account, events, line_no)
+
+
+def can_merge_transfers(a, b):
+    return (
+        a.transfer_source is None
+        and a.type == b.type == "transfer"
+        and a.posted_date == b.posted_date
+        and a.amount == b.amount
+        and a.from_account == b.from_account
+        and a.to_account == b.to_account
+    )
+
+
+def merge_intra_bank_transfers(events_a, events_b):
+    output = []
+
+    i = j = 0
+    a_len = len(events_a)
+    b_len = len(events_b)
+
+    while i < a_len and j < b_len:
+        # Drain non-transfers from A
+        while i < a_len and events_a[i].type != "transfer":
+            output.append(events_a[i])
+            i += 1
+
+        # Drain non-transfers from B
+        while j < b_len and events_b[j].type != "transfer":
+            output.append(events_b[j])
+            j += 1
+
+        if i >= a_len or j >= b_len:
+            break
+
+        a = events_a[i]
+        b = events_b[j]
+
+        if can_merge_transfers(a, b):
+            output.append(a.with_transfer_source(b.source))
+        else:
+            output.append(a)
+            output.append(b)
+        i += 1
+        j += 1
+
+    # Append leftovers
+    output.extend(events_a[i:])
+    output.extend(events_b[j:])
+
+    return output
 
 
 def extract_events(path: Path) -> List[FinancialEvent]:
@@ -202,10 +240,12 @@ def extract_events(path: Path) -> List[FinancialEvent]:
         line_no = 0
 
         while f:
-            new_events, line_no = extract_one_account(f, path, line_no)
-            if not new_events:
+            results = extract_one_account(f, path, line_no)
+            if results is None:
+                # EOF reached
                 break
-            events.extend(new_events)
+            account, new_events, line_no = results
+            events = merge_intra_bank_transfers(events, new_events)
 
     return events
 

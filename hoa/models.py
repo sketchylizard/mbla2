@@ -17,11 +17,26 @@ import json
 
 
 @dataclass(frozen=True)
+class Source:
+    """
+    Provenance information for a Transaction.
+
+    This is a value object: it has no independent identity and
+    is always embedded in a Transaction.
+    """
+
+    file: str  # path relative to sources/
+    line: int | None  # line number or item index within file
+
+
+@dataclass(frozen=True)
 class FinancialEvent:
     # Identity / ordering
     event_id: str
     posted_date: date
     amount: Decimal
+    # Source provenance
+    source: Source
 
     # Accounts (may be inferred later)
     from_account: str | None = None
@@ -33,15 +48,18 @@ class FinancialEvent:
     description: str = ""
     memo: str | None = None
 
-    # Source provenance (never destroyed)
-    source_file: str | None = None
-    source_line: int | None = None
-    source_type: str | None = None  # "DEBIT", "Payment", etc.
+    # Transfer provenance (for transfer events, the matching event)
+    transfer_source: Source | None = None  # for transfers, the matching event
 
     # ---- helpers ----
 
     def with_updates(self, **changes) -> "FinancialEvent":
         return replace(self, **changes)
+
+    def with_transfer_source(self, source: Source) -> "FinancialEvent":
+        if self.transfer_source is not None:
+            raise ValueError("transfer_source already set")
+        return replace(self, transfer_source=source)
 
     def hash(self) -> str:
         parts = [
@@ -67,6 +85,18 @@ class FinancialEvent:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FinancialEvent":
+        source_file = data.get("source_file")
+        source_line = data.get("source_line")
+        source = Source(file=source_file, line=source_line)
+
+        transfer_source_file = data.get("transfer_source_file") or None
+        transfer_source_line = data.get("transfer_source_line") or None
+        transfer_source = (
+            Source(file=transfer_source_file, line=transfer_source_line)
+            if transfer_source_file is None or transfer_source_line is None
+            else None
+        )
+
         return cls(
             event_id=data["event_id"],
             posted_date=date.fromisoformat(data["posted_date"]),
@@ -77,9 +107,8 @@ class FinancialEvent:
             reference=data.get("reference"),
             description=data.get("description", ""),
             memo=data.get("memo"),
-            source_file=data.get("source_file"),
-            source_line=data.get("source_line"),
-            source_type=data.get("source_type"),
+            source=source,
+            transfer_source=transfer_source,
         )
 
     @classmethod
@@ -145,21 +174,6 @@ class BankAccount(str, Enum):
             return cls(raw.strip().lower())
         except ValueError:
             raise ValueError(f"Unknown bank account type: {raw}")
-
-
-@dataclass
-class Source:
-    """
-    Provenance information for a Transaction.
-
-    This is a value object: it has no independent identity and
-    is always embedded in a Transaction.
-    """
-
-    kind: str  # 'bank_csv', 'receipt_yaml', 'manual_yaml'
-    bank_code: str | None  # 'truist', etc., or None
-    file: str  # path relative to sources/
-    line: int | None  # line number or item index within file
 
 
 Rule = Callable[["Source"], str] | None
