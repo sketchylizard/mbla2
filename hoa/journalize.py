@@ -156,23 +156,46 @@ def is_applicable(event: FinancialEvent) -> bool:
     return True
 
 
-def print_journal_entry(
-    entry: FinancialEvent, lot_lookup: dict[str, list[int]]
-) -> None:
-    lot = lot_lookup.get(entry.description, [])
+def journal_entry_from_event(
+    event: FinancialEvent,
+    lot_lookup: dict[str, list[int]],
+) -> JournalEntry:
+    lot = lot_lookup.get(event.description, [])
 
-    print(f"  Date: {entry.posted_date}")
-    print(f"  Description: {entry.description}")
-    if entry.memo:
-        print(f"  Memo: {entry.memo}")
-    print(f"  Amount: {entry.amount}")
+    from_account = event.from_account
+    to_account = event.to_account
+    memo = event.memo
+
+    # Expedient lot-based account substitution
     if lot:
-        print(f"  Lot(s): {', '.join(str(l) for l in lot)}")
-    print("  Accounts:")
+        lot_str = ", ".join(str(l) for l in lot)
+        memo = f"{memo or ''} [Lot(s): {lot_str}]".strip()
 
-    print(f"    - {entry.from_account}: {-entry.amount}")
-    print(f"    - {entry.to_account}: {-entry.amount}")
-    print()
+        if from_account is None:
+            from_account = f"assets:receivables:lot{lot[0]}"
+        elif to_account is None:
+            to_account = f"assets:payables:lot{lot[0]}"
+
+    if from_account is None or to_account is None:
+        raise ValueError(
+            f"Cannot journalize event {event.event_id}: "
+            f"from={from_account}, to={to_account}"
+        )
+
+    postings = (
+        Posting(from_account, -event.amount),
+        Posting(to_account, event.amount),
+    )
+
+    return JournalEntry(
+        posted_date=event.posted_date,
+        type=event.type,
+        amount=event.amount,
+        description=event.description or "",
+        memo=memo,
+        postings=postings,
+        reference=event.reference,
+    )
 
 
 def create_journal_entries(journal: Journal, events: List[FinancialEvent]) -> None:
@@ -186,7 +209,8 @@ def create_journal_entries(journal: Journal, events: List[FinancialEvent]) -> No
             skipped.append(event)
             continue
 
-        print_journal_entry(event, lot_lookup)
+        entry = journal_entry_from_event(event, lot_lookup)
+        journal.add(entry)
 
     print("\nSkipped events:")
     for event in skipped:

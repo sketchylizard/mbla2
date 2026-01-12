@@ -16,14 +16,14 @@ from hoa import config
 @dataclass(frozen=True)
 class JournalEntry:
     posted_date: date
-    effective_date: date
     type: TxType
     description: str
     memo: str | None
-    serial: str | None
+    reference: str | None
     amount: Decimal
+    source: Source
     postings: list[Posting]
-    transactions: List[Transaction]
+    transfer_source: Source | None = None
 
 
 class Journal:
