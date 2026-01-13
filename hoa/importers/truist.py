@@ -12,7 +12,7 @@ import sys
 import yaml
 
 from hoa import config
-from hoa.models import Transaction, Source
+from hoa.models import DepositAnnotation, CheckDetail, Transaction, Source
 from hoa import accounts
 from hoa.members import MemberDirectory, Lot
 
@@ -253,27 +253,20 @@ def extract_events(path: Path) -> List[Transaction]:
     return events
 
 
-@dataclass
-class Deposit:
-    posted_date: date
-    check_number: str
-    payer_name: str
-    amount: Decimal
-    lot: str | None
-    invoice: str | None
-
-
-def extract_deposits(yaml_file: Path) -> List[Deposit]:
+def extract_deposits(yaml_file: Path) -> List[DepositAnnotation]:
     deposits = []
 
     with yaml_file.open(encoding="utf-8-sig") as f:
         data = yaml.safe_load(f)
 
-        for date, checks in data.items():
-            for check in checks:
-                deposits.append(
-                    Deposit(
-                        posted_date=date,
+        for dep in data["deposits"]:
+
+            date = dep["date"]
+            checks = []
+
+            for check in dep["checks"]:
+                checks.append(
+                    CheckDetail(
                         check_number=check.get("check"),  # None for cash
                         payer_name=check["name"],
                         amount=Decimal(check["amount"]),
@@ -281,8 +274,55 @@ def extract_deposits(yaml_file: Path) -> List[Deposit]:
                         invoice=check.get("invoice") or None,
                     )
                 )
+            deposits.append(DepositAnnotation(date=date, checks=checks))
 
     return deposits
+
+
+def apply_deposit_annotations(
+    transactions: List[Transaction],
+    annotations_path: Path,
+) -> List[Transaction]:
+    """Apply deposit annotations to transactions"""
+
+    # Load all deposit annotations
+    all_deposits = []
+    if annotations_path.is_dir():
+        for path in sorted(annotations_path.glob("deposits*.yaml")):
+            all_deposits.extend(extract_deposits(path))
+
+    # Sort by date for predictable matching
+    all_deposits.sort(key=lambda d: d.date)
+
+    # Match and annotate
+    annotated = []
+    for txn in transactions:
+        if (
+            txn.type in ("deposit", "credit")
+            and txn.to_account == "assets:truist:checking"
+        ):
+
+            for idx, deposit in enumerate(all_deposits):
+                if (
+                    deposit.total_amount == txn.amount
+                    and deposit.date <= txn.posted_date
+                ):
+                    deposit = all_deposits.pop(idx)
+                    txn = txn.with_updates(
+                        description=deposit.description,
+                        annotation=deposit,  # Just attach it
+                    )
+                    break
+
+        annotated.append(txn)
+
+    # Report unmatched deposits
+    if all_deposits:
+        print(f"\nWarning: {len(all_deposits)} unmatched deposit annotations:")
+        for d in all_deposits:
+            print(f"  {d.date}: ${d.total_amount} - {d.description}")
+
+    return annotated
 
 
 def process(truist_root: Path) -> List[Transaction]:
@@ -296,27 +336,9 @@ def process(truist_root: Path) -> List[Transaction]:
         events.extend(extract_events(path))
 
     deposits_path = truist_root / "annotations"
-    if not deposits_path.is_dir():
-        raise FileNotFoundError(f"Expected directory: {deposits_path}")
 
-    directory = MemberDirectory(config.DIRECTORY)
+    events = apply_deposit_annotations(events, deposits_path)
 
-    deposit_files = sorted(deposits_path.glob("*.yaml"))
-    for path in deposit_files:
-        deposits = extract_deposits(path)
-
-        # Scan our transactions for any that match the deposits, and if so, add the lot number and invoice number to the description
-        for deposit in deposits:
-            for event in events:
-                if (
-                    event.posted_date == deposit.posted_date
-                    and event.amount == deposit.amount
-                    and event.type in ("deposit", "credit")
-                ):
-                    event.description += (
-                        f" (Lot {deposit.lot_number}, Invoice {deposit.invoice_number})"
-                    )
-                    break
     return events
 
 

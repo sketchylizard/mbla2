@@ -1,21 +1,29 @@
-2026-01-11:
+deposits:
+- date: 2026-01-11
+  checks:
   - {check: 679136, name: Brenda Caverly, amount: 150.00, invoice: 20262300}
   
-2026-01-11:
+- date: 2026-01-11
+  checks:
   - {check: 3022, name: John Brading, amount: 150.00, invoice: 20260600}
   
-2026-01-11:
+- date: 2026-01-11
+  checks:
   - {check: 9722, name: Elizabeth Pekarek, amount: 200.00, invoice: 20264300}
   
-2026-01-11:
+- date: 2026-01-11
+  checks:
   - {check: 2143, name: Sally Sutton, amount: 200.00, invoice: 20261200}
   
-2026-01-11:
+- date: 2026-01-11
+  checks:
   - {check: 830, name: Cynthia Williams, amount: 200.00, invoice: 20260700}
   
-2026-01-11:
+- date: 2026-01-11
+  checks:
   - {check: 3502, name: Scotty Young, amount: 200.00, invoice: 20264500}
   
-2026-01-11:
+- date: 2026-01-11
+  checks:
   - {check: 3460, name: Elaine Jabbour, amount: 150.00, invoice: 20263500}
   
