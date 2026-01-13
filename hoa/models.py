@@ -30,7 +30,7 @@ class Source:
 
 
 @dataclass(frozen=True)
-class FinancialEvent:
+class Transaction:
     # Identity / ordering
     event_id: str
     posted_date: date
@@ -53,10 +53,10 @@ class FinancialEvent:
 
     # ---- helpers ----
 
-    def with_updates(self, **changes) -> "FinancialEvent":
+    def with_updates(self, **changes) -> "Transaction":
         return replace(self, **changes)
 
-    def with_transfer_source(self, source: Source) -> "FinancialEvent":
+    def with_transfer_source(self, source: Source) -> "Transaction":
         if self.transfer_source is not None:
             raise ValueError("transfer_source already set")
         return replace(self, transfer_source=source)
@@ -84,7 +84,7 @@ class FinancialEvent:
         return d
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FinancialEvent":
+    def from_dict(cls, data: Dict[str, Any]) -> "Transaction":
         source_file = data.get("source_file")
         source_line = data.get("source_line")
         source = Source(file=source_file, line=source_line)
@@ -112,7 +112,7 @@ class FinancialEvent:
         )
 
     @classmethod
-    def read_ndjson(cls, stream: TextIO) -> Iterable["FinancialEvent"]:
+    def read_ndjson(cls, stream: TextIO) -> Iterable["Transaction"]:
         for line_no, line in enumerate(stream, start=1):
             line = line.strip()
             if not line:
@@ -120,12 +120,12 @@ class FinancialEvent:
             try:
                 yield cls.from_dict(json.loads(line))
             except Exception as e:
-                raise RuntimeError(f"Invalid FinancialEvent at line {line_no}: {e}")
+                raise RuntimeError(f"Invalid Transaction at line {line_no}: {e}")
 
     @classmethod
     def write_ndjson(
         cls,
-        events: Iterable["FinancialEvent"],
+        events: Iterable["Transaction"],
         stream: TextIO,
     ) -> None:
         class PathEncoder(json.JSONEncoder):
@@ -183,34 +183,6 @@ def _normalize(text: str | None) -> str:
     if not text:
         return ""
     return " ".join(text.strip().lower().split())
-
-
-@dataclass(frozen=True)
-class Transaction:
-    posted_date: date
-    effective_date: date
-    type: TxType
-    description: str
-    memo: str | None
-    serial: str | None
-    account: str
-    amount: Decimal
-    line: int  # line number within source file
-    ordinal: int = 0  # differentiate same-day entries
-
-    def hash(self) -> str:
-        parts = [
-            self.account,
-            self.posted_date.isoformat(),
-            self.type,
-            _normalize(self.description),
-            self.serial or "",
-            str(self.amount),
-            str(self.ordinal),
-        ]
-
-        data = "\x1f".join(parts)
-        return sha256(data.encode("utf-8")).hexdigest()
 
 
 @dataclass

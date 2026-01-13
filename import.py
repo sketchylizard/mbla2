@@ -8,45 +8,14 @@ Dispatches to specialized importer modules based on file location.
 
 from decimal import Decimal
 from pathlib import Path
+from typing import List
 import locale
+import os
 
 from hoa import config
-from hoa.journal import Journal
-
-from hoa.importers.bank.truist import truist
-from hoa.importers import receipts, manual
-
-
-def import_banks(journal: Journal) -> None:
-    """
-    Import all files under a given bank directory.
-    """
-
-    for bank_path in (config.SOURCES / "bank").glob("*"):
-        if bank_path.is_dir():
-            rel_path = bank_path.relative_to(config.SOURCES)
-
-            if len(rel_path.parts) < 2:
-                print(f"Error: bank source missing bank code: {rel_path}")
-                return
-
-            bank_code = rel_path.parts[1]
-
-            if bank_code == "truist":
-                truist.import_files(bank_path, journal)
-            else:
-                print(f"Error: no importer for bank '{bank_code}'")
-
-
-def import_receipts(journal: Journal) -> None:
-    """
-    Import all files under the receipts directory.
-    """
-    receipts_path = config.SOURCES / "receipts"
-    for path in receipts_path.glob("*.toml"):
-        if path.is_file():
-            abs_path = path.resolve()
-            pass
+from hoa.journal import Journal, Posting, JournalEntry
+from hoa.models import Transaction, Source
+from hoa.members import MemberDirectory, Lot
 
 
 def print_summary(
@@ -55,8 +24,8 @@ def print_summary(
     savings_before: Decimal,
 ) -> None:
 
-    checking_after = journal.get_balance("Checking 0947")
-    savings_after = journal.get_balance("Savings 9625")
+    checking_after = journal.get_balance("assets:truist:checking")
+    savings_after = journal.get_balance("assets:truist:savings")
 
     print("\nACCOUNT BALANCES (after import)")
     print("-------------------------------")
@@ -83,18 +52,161 @@ def print_summary(
     )
 
 
+def is_applicable(event: Transaction) -> bool:
+    """
+    Determine if the given Transaction should be journalized.
+    """
+
+    # If the from or to account are two "assets:truist" accounts, then we can journalize it.
+    if event.from_account and event.from_account.startswith("assets:truist"):
+        return True
+
+    if event.to_account and event.to_account.startswith("assets:truist"):
+        return True
+
+    if event.event_id.startswith("venmo"):
+        # check for keywords
+        keywords = [
+            "mbla",
+            "miles branch",
+            "mbloa",
+            "dues",
+            "lot",
+            "lonna",
+            "carson",
+            "lauren",
+            "hoa",
+            "mbhoa",
+        ]
+        if event.memo is None:
+            return False
+
+        for keyword in keywords:
+            if keyword in event.memo.lower():
+                return True
+        return False
+
+    return True
+
+
+def journal_entry_from_event(
+    event: Transaction,
+    directory: MemberDirectory,
+) -> JournalEntry:
+    lot = directory.find_lot_by_name(event.description)
+
+    from_account = event.from_account
+    to_account = event.to_account
+    memo = event.memo
+
+    # Expedient lot-based account substitution
+    if lot:
+        lot_str = ", ".join(str(l) for l in lot)
+        memo = f"{memo or ''} [Lot(s): {lot_str}]".strip()
+
+        if from_account is None:
+            from_account = f"assets:receivables:lot{lot[0]}"
+        elif to_account is None:
+            to_account = f"assets:payables:lot{lot[0]}"
+
+    assert (
+        from_account is not None or to_account is not None
+    ), "At least one of from_account or to_account must be set"
+
+    other_account = None
+
+    if event.type == "debit" or event.type == "deposit":
+        other_account = "assets:income:unknown"
+    if event.type in ("credit", "check", "fee"):
+        other_account = "expenses:unknown"
+
+    if from_account is None:
+        from_account = other_account
+
+    if to_account is None:
+        to_account = other_account
+
+    if from_account is None or to_account is None:
+        print(event)
+        raise ValueError(
+            f"Cannot journalize event {event.event_id}: "
+            f"from={from_account}, to={to_account}"
+        )
+
+    postings = (
+        Posting(
+            account=from_account, amount=-event.amount, lot=lot[0] if lot else None
+        ),
+        Posting(account=to_account, amount=event.amount, lot=lot[0] if lot else None),
+    )
+
+    return JournalEntry(
+        posted_date=event.posted_date,
+        amount=event.amount,
+        description=event.description or "",
+        memo=memo,
+        postings=postings,
+        reference=event.reference,
+        source=event.source,
+        transfer_source=event.transfer_source,
+    )
+
+
+def create_journal_entries(
+    journal: Journal, directory: MemberDirectory, events: List[Transaction]
+) -> None:
+    skipped = []
+
+    for event in events:
+        if not is_applicable(event):
+            skipped.append(event)
+            continue
+
+        entry = journal_entry_from_event(event, directory)
+        journal.add_entry(entry)
+
+    print("\nSkipped events:")
+    for event in skipped:
+        print(
+            f"  - {event.event_id}: {event.description}, {event.memo}, ({event.amount}), from: {event.from_account}, to: {event.to_account}    "
+        )
+
+
 def main():
 
     journal = Journal(config.DATABASE)
+    directory = MemberDirectory(config.DIRECTORY)
 
-    checking_before = journal.get_balance("Checking 0947")
-    savings_before = journal.get_balance("Savings 9625")
+    checking_before = journal.get_balance("assets:truist:checking")
+    savings_before = journal.get_balance("assets:truist:savings")
 
     sources_root = config.SOURCES.resolve()
 
-    # Parse each kind of source
-    import_banks(journal)
-    import_receipts(journal)
+    # Recursively find all files under the sources directory and dispatch to the appropriate importer based on file
+    # path.
+
+    all_transactions = []
+
+    dirs = list(sources_root.glob("*"))
+    for dir in dirs:
+        if not dir.is_dir():
+            continue
+
+        importer_name = dir.name  # 'truist', 'venmo', 'journals'
+
+        # Dynamically import the processor
+        try:
+            importer = __import__(
+                f"hoa.importers.{importer_name}", fromlist=["process"]
+            )
+            transactions = importer.process(dir)
+            create_journal_entries(journal, directory, transactions)
+            print(f"Processed {len(transactions)} from {importer_name}")
+
+            all_transactions.extend(transactions)
+
+        except ModuleNotFoundError:
+            print(f"Warning: No importer found for {importer_name}")
 
     print_summary(journal, checking_before, savings_before)
 

@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import List
 
-from hoa.models import TxType, FinancialEvent, Posting, Transaction
+from hoa.models import TxType, Transaction, Posting
 
 # ============================================================================
 # Annotation File Grammar (Informal EBNF + Semantic Rules)
@@ -140,25 +140,6 @@ class Annotation:
         return isinstance(self.key, ReconciledKey)
 
     def matches(self, entry: Transaction) -> bool:
-        """Check if this resolved annotation matches the given journal entry."""
-
-        # Check to see if we have a hash (reconciled) or a pending key
-        if self.is_reconciled:
-            return self.key.hash == entry.hash()
-        else:
-            pending_key = self.key
-            # Pending dates will always be earlier than or equal to posted date
-            if pending_key.date > entry.posted_date:
-                return False
-            if pending_key.amount != abs(entry.amount):
-                return False
-            if pending_key.type and pending_key.type != entry.type:
-                return False
-            if pending_key.reference and pending_key.reference != entry.serial:
-                return False
-            return True
-
-    def matches(self, entry: FinancialEvent) -> bool:
         """Check if this resolved annotation matches the given journal entry."""
 
         # Check to see if we have a hash (reconciled) or a pending key
@@ -450,12 +431,6 @@ class AnnotationStore:
                         break
 
     def match(self, entry: Transaction) -> Annotation | None:
-        for item in self._items:
-            if item.matches(entry):
-                return item
-        return None
-
-    def match(self, entry: FinancialEvent) -> Annotation | None:
         for item in self._items:
             if item.matches(entry):
                 return item

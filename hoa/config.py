@@ -10,7 +10,8 @@ SOURCES = PROJECT_ROOT / "sources"
 
 BANK = SOURCES / "bank"
 RECEIPTS = SOURCES / "receipts"
-MANUAL = SOURCES / "manual"
+JOURNALS = SOURCES / "journals"
+DIRECTORY = SOURCES / "directory.yaml"
 
 BANKS = {
     "truist": "Truist Bank",

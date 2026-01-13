@@ -10,7 +10,7 @@ from typing import List, Iterable, Optional
 import csv
 import sys
 
-from hoa.models import FinancialEvent, Source
+from hoa.models import Transaction, Source
 from hoa import accounts
 
 
@@ -143,8 +143,8 @@ class UnknownVenmoType(Exception):
         self.venmo_type = venmo_type
 
 
-def extract_events(path: Path) -> List[FinancialEvent]:
-    events: List[FinancialEvent] = []
+def extract_events(path: Path) -> List[Transaction]:
+    events: List[Transaction] = []
 
     with path.open(newline="", encoding="utf-8-sig") as f:
         next(f)  # skip metadata
@@ -185,7 +185,7 @@ def extract_events(path: Path) -> List[FinancialEvent]:
                 note = note.replace("\n", " | ")
 
                 events.append(
-                    FinancialEvent(
+                    Transaction(
                         event_id=event_id,
                         posted_date=posted_date,
                         amount=abs(ctx.amount),
@@ -205,42 +205,32 @@ def extract_events(path: Path) -> List[FinancialEvent]:
     return events
 
 
+def process(venmo_root: Path) -> List[Transaction]:
+    events: List[Transaction] = []
+
+    files = sorted(venmo_root.glob("*.csv"))
+    for path in files:
+        events.extend(extract_events(path))
+
+    return events
+
+
 # ----------------------------
 # CLI
 # ----------------------------
-
-
-def iter_csv_files(args: list[str]) -> list[Path]:
-    files: list[Path] = []
-
-    for arg in args:
-        path = Path(arg)
-
-        if path.is_dir():
-            files.extend(sorted(path.glob("*.csv")))
-        elif path.is_file():
-            files.append(path)
-        else:
-            raise FileNotFoundError(f"No such file or directory: {arg}")
-
-    return files
-
-
 def main(argv: list[str]) -> int:
     if not argv:
         print(
-            "Usage: venmo.py <file.csv | directory> [...]",
+            "Usage: truist.py <file.csv | directory> [...]",
             file=sys.stderr,
         )
         return 2
 
-    all_events: list[FinancialEvent] = []
+    all_events: list[Transaction] = []
 
-    for csv_file in iter_csv_files(argv):
-        events = extract_events(csv_file)
-        all_events.extend(events)
+    all_events = process(config.SOURCES / "truist")
 
-    FinancialEvent.write_ndjson(all_events, sys.stdout)
+    Transaction.write_ndjson(all_events, sys.stdout)
     return 0
 
 

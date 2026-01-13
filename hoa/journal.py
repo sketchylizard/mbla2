@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Tuple, Set
 import sqlite3
 
-from hoa.models import Transaction, Posting, Source, TxType
+from hoa.models import Posting, Source, TxType
 
 from hoa import config
 
@@ -16,7 +16,6 @@ from hoa import config
 @dataclass(frozen=True)
 class JournalEntry:
     posted_date: date
-    type: TxType
     description: str
     memo: str | None
     reference: str | None
@@ -41,12 +40,10 @@ class Journal:
             CREATE TABLE IF NOT EXISTS journal_entry (
                 journal_id      INTEGER PRIMARY KEY AUTOINCREMENT,
                 posted_date     TEXT NOT NULL,        -- ISO date
-                effective_date  TEXT NOT NULL,        -- ISO date
-                tx_type         TEXT NOT NULL,
                 description     TEXT NOT NULL,
                 amount          INTEGER NOT NULL,     -- stored as cents
                 memo            TEXT,
-                serial          TEXT -- check # or other serial number
+                reference       TEXT -- check # or other reference number
             )
             """
         )
@@ -70,11 +67,8 @@ class Journal:
             """
             CREATE TABLE IF NOT EXISTS journal_entry_source (
                 journal_id TEXT NOT NULL,
-                source_hash     TEXT NOT NULL UNIQUE, -- ensures uniqueness
-                source_bank     TEXT,                 -- from Source
                 source_filename TEXT NOT NULL,        -- from Source
-                source_line_no  INTEGER NOT NULL,     -- from Source
-                PRIMARY KEY (source_hash)
+                source_line_no  INTEGER NOT NULL      -- from Source
             )
             """
         )
@@ -109,20 +103,16 @@ class Journal:
         self,
         journal_id: int,
         source: Source,
-        hash: str,
     ) -> None:
 
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            INSERT OR IGNORE INTO journal_entry_source (journal_id,
-            source_hash, source_bank, source_filename, source_line_no)
-                VALUES (?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO journal_entry_source (journal_id, source_filename, source_line_no)
+                VALUES (?, ?, ?)
             """,
             (
                 journal_id,
-                hash,
-                source.bank_code,
                 source.file,
                 source.line,
             ),
@@ -147,23 +137,13 @@ class Journal:
                 f"for entry '{entry.description}' on {entry.posted_date}"
             )
 
-        # We have at least once source transaction (maybe two for transfers)
-        # Make sure each source account is only listed once.
-        for tx in entry.transactions:
-            if posting_accounts.count(tx.account) != 1:
-                raise ValueError(
-                    f"Source transaction account '{tx.account}' "
-                    f"not found exactly once in postings for entry "
-                    f"'{entry.description}' on {entry.posted_date}"
-                )
-
-    def add_entry(self, entry: JournalEntry, source: Source) -> int | None:
+    def add_entry(self, entry: JournalEntry) -> int | None:
         """
         Inserts a journal entry into the database.
 
         Parameters
         ----------
-        entry : Transaction
+        entry : JournalEntry
             The in-memory semantic entry.
         source : Source
             Information about the origin (filename, line number, etc.)
@@ -183,19 +163,15 @@ class Journal:
             cursor.execute(
                 """
             INSERT INTO journal_entry
-            (posted_date, effective_date,
-             tx_type, description, amount,
-             memo, serial)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (posted_date, description, amount, memo, reference)
+            VALUES (?, ?, ?, ?, ?)
             """,
                 (
                     entry.posted_date,
-                    entry.effective_date,
-                    entry.type,
                     entry.description,
                     int(entry.amount * 100),  # store as integer cents
                     entry.memo,
-                    entry.serial,
+                    entry.reference,
                 ),
             )
             journal_id = cursor.lastrowid
@@ -203,8 +179,9 @@ class Journal:
             for posting in entry.postings:
                 self._add_posting(journal_id, posting)
 
-            for tx in entry.transactions:
-                self.add_source(journal_id, replace(source, line=tx.line), tx.hash())
+            self.add_source(journal_id, entry.source)
+            if entry.transfer_source:
+                self.add_source(journal_id, entry.transfer_source)
 
             self.conn.commit()
             return journal_id

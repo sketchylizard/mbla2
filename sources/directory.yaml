@@ -1,0 +1,369 @@
+1:
+  owners: [Christopher Roundtree, Lisa Roundtree]
+  emails: [lisa_goins3@yahoo.com]
+  phones: []
+  address:
+    - 100 Moore Mountain Rd
+    - Pittsboro, NC 27312-8492
+
+2:
+  grouped_lots: [2, 3]
+  owners: [Debbie Tunnell, Ken Tunnell]
+  emails: [DebbieTunnell@hotmail.com, KennethTunnell@hotmail.com]
+  phones: [Mobile:919-923-8547, Mobile:919-291-5245, Home:919-542-3176]
+  address:
+    - 282 Moore Mountain Rd
+    - Pittsboro, NC 27312-8493
+
+4:
+  owners: [Zeki Keles, Ruchan Keles]
+  emails: [mezeki@gmail.com]
+  phones: [Mobile:919-889-0801]
+  address:
+    - 35 Miles Branch Rd
+    - Pittsboro, NC 27312
+  mailing:
+    - 37500 Eden
+    - Chapel Hill, NC 27517-8362
+
+5:
+  owners: [Diane Draudt, Lauren Thomas]
+  emails: [lddraudt@yahoo.com, lthomas9149@yahoo.com]
+  phones: [Mobile:919-451-7509, Mobile:919-444-9901]
+  address:
+    - 91 Lonna Ct
+    - Pittsboro, NC 27312-8792
+
+6:
+  owners: [John R Brading]
+  emails: [BradingjohnR@aol.com]
+  phones: [Mobile:919-801-4960, Home:919-542-2954]
+  address:
+    - 85 Lonna Ct
+    - Pittsboro, NC 27312-8792
+
+7:
+  owners: [Cynthia Williams]
+  emails: [starcynt60@gmail.com]
+  phones: [Mobile:919-618-0933]
+  address:
+    - 55 Miles Branch Rd
+    - Pittsboro, NC 27312-8796
+
+8:
+  owners: [Kevin Tull]
+  emails: [tull.kevin@gmail.com]
+  phones: [Mobile:919-923-3254]
+  address:
+    - 81 Lonna Ct
+    - Pittsboro, NC 27312-8792
+  mailing:
+    - 185 McGregor Woods Rd
+    - Chapel Hill, NC 27517-8997
+
+9:
+  owners: [Angela C. Ray]
+  emails: [Acray07000@icloud.com]
+  phones: [Mobile:919-291-2521]
+  address:
+    - 89 Lonna Ct
+    - Pittsboro, NC 27312-8792
+  mailing:
+    - 6216 Summerfield Dr
+    - Durham, NC 27712-1553
+
+10:
+  owners: [Randy Stephenson, Lynn Stephenson]
+  emails: [rslm@earthlink.net]
+  phones: [Randy:919-542-7987, Lynn:919-542-8775]
+  address:
+    - 129 Lonna Ct
+    - Pittsboro, NC 27312-8793
+
+11:
+  owners: [Ben Collins]
+  emails: [bncme262@yahoo.com]
+  phones: [Mobile:857-719-3837]
+  address:
+    - 147 Lonna Ct
+    - Pittsboro, NC 27312-8793
+
+12:
+  owners: [Ed Sutton, Sally Sutton]
+  emails: [esutton@mindspring.com, sallysutton@mindspring.com]
+  phones: [Mobile:919-417-8784]
+  address:
+    - 162 Lonna Ct
+    - Pittsboro, NC 27312-8793
+
+13:
+  hoa_owned: true
+  grouped_lots: [13, 19, 21]
+
+14:
+  owners: [David Donlon, Julia Thorp]
+  emails: [dkdjmt@mindspring.com]
+  phones: [David:919-929-6445, Julia:919-444-3808]
+  address:
+    - 164 Lonna Ct
+    - Pittsboro, NC 27312-8793
+
+15:
+  owners: [Clayton Rodgers, Susan Rodgers]
+  emails: [wcrrun@nc.rr.com, shr@nc.rr.com]
+  phones: [Mobile:919-809-4346, Mobile:919-809-4403, Home:919-533-6793]
+  address:
+    - 148 Lonna Ct
+    - Pittsboro, NC 27312-8793
+
+16:
+  owners: [Richard Billings, Joan Cahill]
+  emails: [cahill.billings@gmail.com]
+  phones: [Home:919-542-1375]
+  address:
+    - 138 Lonna Ct
+    - Pittsboro, NC 27312-8793
+
+17:
+  owners: [Kelly Anne Blair, Kelly S. Blair]
+  emails: [kelly.kerwin@duke.edu]
+  phones: [Mobile:919-219-0316, Mobile:919-370-0958]
+  address:
+    - 74 Lonna Ct
+    - Pittsboro, NC 27312-8792
+
+18:
+  owners: [Jason Stewart, Kim Stewart]
+  emails: [adoredwife@gmail.com, jason@sketchylizard.com]
+  phones: [Kim:919-491-3279, Jason:919-491-3278]
+  address:
+    - 24 Lonna Ct
+    - Pittsboro, NC 27312
+
+20:
+  owners: [Nathalie Worthington]
+  emails: [nathalington@gmail.com]
+  phones: [Mobile:727-510-7573]
+  address:
+    - 22 Miles Branch Rd
+    - Pittsboro, NC 27312
+  mailing:
+    - 7 Forrest Terrace
+    - Fairfax, CA 94930
+
+22:
+  owners: [Tony Chester, Jen Chester]
+  emails: [jenchester11@gmail.com]
+  phones: [Mobile:919-267-0561]
+  address:
+    - 96 Miles Branch Rd
+    - Pittsboro, NC 27312-8796
+
+23:
+  owners: [Brenda Caverly]
+  emails: [Strayandsmoki@gmail.com]
+  phones: [Mobile:919-742-0024]
+  address:
+    - 20 Lauren Ct
+    - Pittsboro, NC 27312-5703
+
+24:
+  owners: [Carmen Rice, John Rice]
+  emails: [whitecallalily@gmail.com, bigbeergeek@gmail.com]
+  phones: [Mobile:919-740-8117, Home:919-542-1740]
+  address:
+    - 58 Lauren Ct
+    - Pittsboro, NC 27312-5703
+
+25:
+  owners: [Harold Vogel]
+  emails: []
+  phones: [Home:919-542-2709]
+  address:
+    - 88 Lauren Ct
+    - Pittsboro, NC 27312-5703
+
+26:
+  owners: [John Laign, Melissa Laign]
+  emails: [jlaign@nc.rr.com]
+  phones: [Mobile:919-923-4534]
+  address:
+    - 89 Lauren Ct
+    - Pittsboro, NC 27312-5703
+
+27:
+  owners: [Paul Stratton]
+  emails: [pstrat1@yahoo.com]
+  phones: [Mobile:919-930-4189]
+  address:
+    - 85 Lauren Ct
+    - Pittsboro, NC 27312-5703
+
+28:
+  owners: [Judi Helsing, Ed Helsing]
+  emails: [jlhphoto@gmail.com]
+  phones: [Ed:713-202-5040, Judi:713-202-4899]
+  address:
+    - 614 Lee Fox Ln
+    - Hillsborough, NC 27278-6886
+
+29:
+  owners: [Michael Turnage, Susan Bowyer]
+  emails: [mturnage1@nc.rr.com, sbowyer@nc.rr.com]
+  phones: [Mobile:919-444-4336]
+  address:
+    - 55 Lauren Ct
+    - Pittsboro, NC 27312-5703
+
+30:
+  owners: [Gerald Cook, Hui Cook]
+  emails: [gcook1021@nc.rr.com]
+  phones: [Mobile:919-545-5662]
+  address:
+    - 23 Lauren Ct
+    - Pittsboro, NC 27312-5703
+
+31:
+  owners: [Gina McCoy]
+  emails: [always_kizil@yahoo.com]
+  phones: [Mobile:919-740-2014]
+  address:
+    - 42 Carson Ct
+    - Pittsboro, NC 27312-6491
+
+32:
+  owners: [Harry Bulbrook, Amy Bulbrook]
+  emails: [bulbrookh@gmail.com]
+  phones: [Mobile:919-616-3791]
+  address:
+    - 68 Carson Ct
+    - Pittsboro, NC 27312-6491
+
+33:
+  owners: [Jerry Richardson, Robin Richardson]
+  emails: [triplej27312@gmail.com, rbrmkc303@gmail.com]
+  phones: [Mobile:919-244-1949, Mobile:919-244-5898]
+  address:
+    - 102 Carson Ct
+    - Pittsboro, NC 27312-6492
+
+34:
+  owners: [Matt McKenzie, Angela Ross]
+  emails: [mjmck38@gmail.com]
+  phones: [Mobile:919-618-3702]
+  address:
+    - 128 Carson Ct
+    - Pittsboro, NC 27312-6492
+
+35:
+  owners: [Elaine Jabour, Sultan Jabour]
+  emails: [newyorkgirl65@yahoo.com, sijabbour@yahoo.com]
+  phones: [Mobile:919-444-3222, Mobile:919-444-9250]
+  address:
+    - 132 Carson Ct
+    - Pittsboro, NC 27312-6492
+
+36:
+  owners: [Dave Chambers, Mary Chambers]
+  emails: [dcham676@yahoo.com]
+  phones: [Dave:843-870-6514, Kate:843-870-4850]
+  address:
+    - 136 Carson Ct
+    - Pittsboro, NC 27312-6492
+
+37:
+  owners: [Charles Holley, Heather Holley]
+  emails: [cfholley@yahoo.com, Hmhholley@yahoo.com]
+  phones: [Mobile:843.709.5196]
+  address:
+    - 133 Carson Ct
+    - Pittsboro, NC 27312-6492
+
+38:
+  owners: [Maureen Valente, Roger Valente]
+  emails: [mevalente58@gmail.com, rhvalente57@gmail.com]
+  phones: [Mobile:919-548-3906, Mobile:919-548-0065]
+  address:
+    - 115 Carson Ct
+    - Pittsboro, NC 27312
+
+39:
+  owners: [Jodi Tata]
+  emails: [jodiamanda@me.com]
+  phones: [Mobile:919-407-1285]
+  address:
+    - 95 Carson Ct
+    - Pittsboro, NC 27312-6491
+
+40:
+  owners: [Karen Ladd]
+  emails: [temenos00@gmail.com]
+  phones: [Mobile:919-240-8889]
+  address:
+    - 354 Miles Branch Rd
+    - Pittsboro, NC 27312-7701
+
+41:
+  owners: [Dylan Cromer, Carolyn Cromer]
+  emails: [dylanmattc@gmail.com]
+  phones: [Mobile:716-341-4154]
+  address:
+    - 352 Miles Branch Rd
+    - Pittsboro, NC 27312-7701
+
+42:
+  owners: [Kelsey Akins]
+  emails: [klakins@gmail.com]
+  phones: [Mobile:919-599-2690]
+  address:
+    - 358 Miles Branch Rd
+    - Pittsboro, NC 27312
+
+43:
+  owners: [Alan McGinigle, Elizabeth Pekarek]
+  emails: [epekarek1@nc.rr.com]
+  phones: [Elizabeth:919-602-4898, Home:919-542-1195]
+  address:
+    - 54 Artisan Ln
+    - Pittsboro, NC 27312-9804
+
+44:
+  owners: [Jay Sloane, Trish Welch]
+  emails: [jrsloane123@gmail.com, trish.fiddleheadpottery@gmail.com]
+  phones: [Mobile:919-414-3338, Mobile:919-523-8366, Home:919-542-0762]
+  address:
+    - 63 Artisan Ln
+    - Pittsboro, NC 27312-9804
+
+45:
+  owners: [Diane Swan, Scotty Young]
+  emails: [diswanwoodgal@gmail.com, trancedance@mindspring.com]
+  phones: [Mobile:919-548-3011, Mobile:919-414-3338]
+  address:
+    - 59 Artisan Ln
+    - Pittsboro, NC 27312-9804
+
+46:
+  owners: [Emily Behr, Greg Behr]
+  emails: [emilyjeanbass@gmail.com, gregbehr@icloud.com]
+  phones: [Mobile:919-780-3516, Mobile:919-272-5621]
+  address:
+    - 321 Miles Branch Rd
+    - Pittsboro, NC 27312-7701
+
+47:
+  owners: [Dawn Streets, Dennis Streets]
+  emails: [dawnstreets04@gmail.com, dwstreets52@gmail.com]
+  phones: [Mobile:919-548-1120, Mobile:919-548-1064]
+  address:
+    - 261 Miles Branch Rd
+    - Pittsboro, NC 27312-8799
+
+48:
+  grouped_lots: [48, 49]
+  owners: [Chris Canfield, Kate Finlayson]
+  emails: [ccanfield82@yahoo.com, kate@naturenia.com]
+  phones: [Mobile:504-344-4328, Mobile:919-985-5283]
+  address:
+    - 235 Miles Branch Rd
+    - Pittsboro, NC 27312-8799

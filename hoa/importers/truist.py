@@ -9,9 +9,12 @@ from typing import List, DefaultDict, Tuple
 import csv
 import re
 import sys
+import yaml
 
-from hoa.models import FinancialEvent, Source
+from hoa import config
+from hoa.models import Transaction, Source
 from hoa import accounts
+from hoa.members import MemberDirectory, Lot
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -112,9 +115,9 @@ def extract_one_account(
     f: __file__,
     path: Path,
     line_no: int,
-) -> Tuple[str, List[FinancialEvent], int] | None:
+) -> Tuple[str, List[Transaction], int] | None:
     # An account section starts with the account name, followed by a CSV header, then the transactions.
-    events: List[FinancialEvent] = []
+    events: List[Transaction] = []
 
     counters: dict[Key, int] = DefaultDict(int)
 
@@ -162,7 +165,7 @@ def extract_one_account(
 
         values = _fix_accounts(account, description, source_type, amount)
 
-        event = FinancialEvent(
+        event = Transaction(
             event_id=event_id,
             posted_date=posted_date,
             amount=values["amount"],
@@ -230,8 +233,8 @@ def merge_intra_bank_transfers(events_a, events_b):
     return output
 
 
-def extract_events(path: Path) -> List[FinancialEvent]:
-    events: List[FinancialEvent] = []
+def extract_events(path: Path) -> List[Transaction]:
+    events: List[Transaction] = []
 
     with path.open(encoding="utf-8-sig") as f:
         # There should be two sections, one for each of the accounts (checking & savings). We should be sitting on the
@@ -250,25 +253,76 @@ def extract_events(path: Path) -> List[FinancialEvent]:
     return events
 
 
+@dataclass
+class Deposit:
+    posted_date: date
+    check_number: str
+    payer_name: str
+    amount: Decimal
+    lot: str | None
+    invoice: str | None
+
+
+def extract_deposits(yaml_file: Path) -> List[Deposit]:
+    deposits = []
+
+    with yaml_file.open(encoding="utf-8-sig") as f:
+        data = yaml.safe_load(f)
+
+        for date, checks in data.items():
+            for check in checks:
+                deposits.append(
+                    Deposit(
+                        posted_date=date,
+                        check_number=check.get("check"),  # None for cash
+                        payer_name=check["name"],
+                        amount=Decimal(check["amount"]),
+                        lot=check.get("lot") or None,
+                        invoice=check.get("invoice") or None,
+                    )
+                )
+
+    return deposits
+
+
+def process(truist_root: Path) -> List[Transaction]:
+    events: List[Transaction] = []
+
+    statements_path = truist_root / "statements"
+    if not statements_path.is_dir():
+        raise FileNotFoundError(f"Expected directory: {statements_path}")
+
+    for path in sorted(statements_path.glob("*.csv")):
+        events.extend(extract_events(path))
+
+    deposits_path = truist_root / "annotations"
+    if not deposits_path.is_dir():
+        raise FileNotFoundError(f"Expected directory: {deposits_path}")
+
+    directory = MemberDirectory(config.DIRECTORY)
+
+    deposit_files = sorted(deposits_path.glob("*.yaml"))
+    for path in deposit_files:
+        deposits = extract_deposits(path)
+
+        # Scan our transactions for any that match the deposits, and if so, add the lot number and invoice number to the description
+        for deposit in deposits:
+            for event in events:
+                if (
+                    event.posted_date == deposit.posted_date
+                    and event.amount == deposit.amount
+                    and event.type in ("deposit", "credit")
+                ):
+                    event.description += (
+                        f" (Lot {deposit.lot_number}, Invoice {deposit.invoice_number})"
+                    )
+                    break
+    return events
+
+
 # ----------------------------
 # CLI
 # ----------------------------
-
-
-def iter_csv_files(args: list[str]) -> list[Path]:
-    files: list[Path] = []
-
-    for arg in args:
-        path = Path(arg)
-
-        if path.is_dir():
-            files.extend(sorted(path.glob("*.csv")))
-        elif path.is_file():
-            files.append(path)
-        else:
-            raise FileNotFoundError(f"No such file or directory: {arg}")
-
-    return files
 
 
 def main(argv: list[str]) -> int:
@@ -279,13 +333,11 @@ def main(argv: list[str]) -> int:
         )
         return 2
 
-    all_events: list[FinancialEvent] = []
+    all_events: list[Transaction] = []
 
-    for csv_file in iter_csv_files(argv):
-        events = extract_events(csv_file)
-        all_events.extend(events)
+    all_events = process(config.SOURCES / "truist")
 
-    FinancialEvent.write_ndjson(all_events, sys.stdout)
+    Transaction.write_ndjson(all_events, sys.stdout)
     return 0
 
 

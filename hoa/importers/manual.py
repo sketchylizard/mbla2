@@ -1,15 +1,76 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
-from hoa.journal import Journal
+from typing import List, DefaultDict, Tuple
+import yaml
+import sys
+
+from hoa.models import Transaction, Source
+from hoa import accounts, config
 
 
-def import_file(abs_path: Path, rel_path: Path, journal: Journal) -> None:
-    """
-    Placeholder importer for manual entries.
-    Currently not implemented.
+def extract_events(path: Path) -> List[Transaction]:
+    events: List[Transaction] = []
 
-    Args:
-        abs_path: Absolute path to the source file
-        rel_path: Path relative to config.SOURCES (for Source.file)
-        journal: Journal object to add entries to
-    """
-    print(f"Error: Manual importer is not implemented yet for file: {rel_path}")
+    yaml_data = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
+
+    opening_date = yaml_data.get("date")
+    description = yaml_data.get("description", "Opening balance")
+    account = yaml_data.get("account", "equity:opening_balances")
+
+    for entry in yaml_data.get("balances", []):
+        event_id = f"journal:{entry.get('account')}:{opening_date}"
+        credit = Decimal(str(entry.get("credit", "0")))
+        debit = Decimal(str(entry.get("debit", "0")))
+        amount = credit - debit
+        event = Transaction(
+            event_id=event_id,
+            posted_date=opening_date,
+            description=description,
+            amount=amount,
+            from_account=entry["account"],
+            to_account=account,
+            source=Source(file=str(path), line=0),
+        )
+        events.append(event)
+
+    return events
+
+
+def process(manual_root: Path) -> List[Transaction]:
+    events: List[Transaction] = []
+
+    files = sorted(manual_root.glob("*.yaml"))
+    for path in files:
+        events.extend(extract_events(path))
+
+    return events
+
+
+# ----------------------------
+# CLI
+# ----------------------------
+
+
+def main(argv: list[str]) -> int:
+    if not argv:
+        print(
+            "Usage: manual.py <file.csv | directory> [...]",
+            file=sys.stderr,
+        )
+        return 2
+
+    all_events: list[Transaction] = []
+
+    all_events = process(config.SOURCES / "manual")
+
+    Transaction.write_ndjson(all_events, sys.stdout)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

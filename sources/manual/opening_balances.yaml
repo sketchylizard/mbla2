@@ -1,0 +1,17 @@
+date: 2023-12-31
+description: "Opening balances when transitioning to plain text accounting"
+account: "equity:opening_balances"
+
+balances:
+  # Asset accounts
+  - account: "assets:truist:checking"
+    debit: 7892.91
+  
+  - account: "assets:truist:savings"
+    debit: 9688.25
+  
+  # Prepayments (what we owe homeowners - negative receivable)
+  - account: "receivables"
+    credit: 450.00    # Credit = negative receivable
+    lot: 1
+    note: "Prepaid through 2025"
