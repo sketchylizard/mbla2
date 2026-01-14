@@ -276,11 +276,10 @@ class Transaction:
 
 
 class TxType(str, Enum):
-    credit = "credit"
-    debit = "debit"
     fee = "fee"
     deposit = "deposit"
     check = "check"
+    debit = "debit"
     transfer = "transfer"
 
     @classmethod

@@ -1,4 +1,20 @@
 deposits:
+- date: 2025-12-29
+  checks:
+  - {check: 483, name: Nathalie Worthington, amount: 200.00, invoice: 20262000}
+
+- date: 2025-12-29
+  checks:
+  - {check: 61693, name: Roger Efrid, amount: 150.00, invoice: 20263000}
+
+- date: 2025-12-29
+  checks:
+  - {check: 8976, name: Lynn Stephenson, amount: 150.00, invoice: 20261000}
+
+- date: 2025-12-29
+  checks:
+  - {check: 1616, name: Karen Ladd, amount: 200.00, invoice: 20264000}
+
 - date: 2026-01-11
   checks:
   - {check: 679136, name: Brenda Caverly, amount: 150.00, invoice: 20262300}

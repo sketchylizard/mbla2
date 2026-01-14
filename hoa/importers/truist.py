@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import List, DefaultDict, Tuple
@@ -38,13 +38,29 @@ def parse_date(value: str) -> str:
     return date
 
 
-def _fix_accounts(
-    active_account: str, description: str, type: str, amount: Decimal
-) -> dict:
+def transaction_from_csv_row(
+    row: dict,
+    account: str,
+    event_id: str,
+    path: Path,
+    line_no: int,
+) -> Transaction:
     """
-    If the description matches a known transfer pattern, return the from_account, to_account, type, and amount.
-    Otherwise, deduce the from/to account from the sign of the amount.
+    Create a Transaction from a CSV row.
+
+    Normalizes bank terminology into semantic transaction types.
     """
+    from hoa.models import TxType
+
+    posted_date = parse_date(row["Posted Date"])
+    amount = parse_amount(row["Amount"])
+    description = row.get("Full description", "").strip()
+    source_type = row.get("Transaction Type", "").strip().lower()
+    check_number = row.get("Check/Serial #", "").strip()
+
+    # Determine semantic type and accounts based on amount and description
+
+    # Handle known transfer patterns first
     match = re.match(r"ONLINE (FROM|TO) \**(\d+)", description)
     if match:
         direction = match.group(1)
@@ -52,56 +68,86 @@ def _fix_accounts(
 
         if direction == "FROM":
             assert amount > 0, f"Expected positive amount for {description}"
-            return {
-                "from": other_account,
-                "to": active_account,
-                "description": f"Transfer from {other_account}",
-                "type": "transfer",
-                "amount": amount,
-            }
+            return Transaction(
+                event_id=event_id,
+                posted_date=posted_date,
+                amount=amount,
+                type=TxType.transfer,
+                from_account=other_account,
+                to_account=account,
+                reference=check_number or None,
+                description=f"Transfer from {other_account}",
+                memo=None,
+                source=Source(str(path), line_no),
+            )
 
         if direction == "TO":
             assert amount < 0, f"Expected negative amount for {description}"
-            return {
-                "from": active_account,
-                "to": other_account,
-                "description": f"Transfer to {other_account}",
-                "type": "transfer",
-                "amount": abs(amount),
-            }
+            return Transaction(
+                event_id=event_id,
+                posted_date=posted_date,
+                amount=abs(amount),
+                type=TxType.transfer,
+                from_account=account,
+                to_account=other_account,
+                reference=check_number or None,
+                description=f"Transfer to {other_account}",
+                memo=None,
+                source=Source(str(path), line_no),
+            )
 
-        raise ValueError(
-            f"Unexpected direction {direction} in description: {description}"
+    match = re.match(r"CASHOUT VENMO (\d+)", description)
+    if match:
+        return Transaction(
+            event_id=event_id,
+            posted_date=posted_date,
+            amount=amount,
+            type=TxType.transfer,
+            from_account="assets:venmo",
+            to_account=account,
+            reference=check_number or None,
+            description=f"Transfer from Venmo {match.group(1)}",
+            memo=None,
+            source=Source(str(path), line_no),
         )
 
-    match = re.match(r"CASHOUT VENMO (\d+) JASON STEWART ACH CREDIT", description)
-    if match:
-        other_account = "assets:venmo"
-        return {
-            "from": "assets:venmo",
-            "to": active_account,
-            "description": f"Transfer from Venmo {match.group(1)}",
-            "type": "transfer",
-            "amount": amount,
-        }
-
+    # Money leaving (negative amount)
     if amount < 0:
-        return {
-            "from": active_account,
-            "to": None,
-            "description": description,
-            "type": type,
-            "amount": abs(amount),
-        }
+        # Determine semantic type based on description
+        if description.startswith("Check #"):
+            tx_type = TxType.check
+        elif "FEE" in description.upper():
+            tx_type = TxType.fee
+        else:
+            tx_type = TxType.debit
 
-    assert amount > 0, f"Expected non-negative amount for {description}"
+        return Transaction(
+            event_id=event_id,
+            posted_date=posted_date,
+            amount=abs(amount),
+            type=tx_type,
+            from_account=account,
+            to_account=None,
+            reference=check_number or None,
+            description=description,
+            memo=None,
+            source=Source(str(path), line_no),
+        )
 
-    return {
-        "from": None,
-        "to": active_account,
-        "description": description,
-        "amount": amount,
-    }
+    # Money arriving (positive amount)
+    assert amount > 0, f"Expected positive amount for {description}"
+    return Transaction(
+        event_id=event_id,
+        posted_date=posted_date,
+        amount=amount,
+        type=TxType.deposit,
+        from_account=None,
+        to_account=account,
+        reference=check_number or None,
+        description=description,
+        memo=None,
+        source=Source(str(path), line_no),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -152,31 +198,13 @@ def extract_one_account(
         source_type = row.get("Transaction Type", "").strip().lower()
         counters[(posted_date, source_type)] += 1
         ordinal = counters[(posted_date, source_type)]
-        event_id = f"{id_prefix}:{posted_date}:{str(source_type)}:{ordinal:02}"
 
         check_number = row.get("Check/Serial #", "").strip()
+        event_id = f"{id_prefix}:{posted_date}:{str(source_type)}:{ordinal:02}"
         if check_number:
             event_id += f":{check_number}"
 
-        # Amount sign convention:
-        amount = parse_amount(row["Amount"])
-
-        description = row.get("Full description", "").strip()
-
-        values = _fix_accounts(account, description, source_type, amount)
-
-        event = Transaction(
-            event_id=event_id,
-            posted_date=posted_date,
-            amount=values["amount"],
-            type=values.get("type") or source_type,
-            from_account=values["from"],
-            to_account=values["to"],
-            reference=check_number or None,
-            description=values["description"],
-            memo=None,
-            source=Source(str(path), line_no),
-        )
+        event = transaction_from_csv_row(row, account, event_id, path, line_no)
 
         events.append(event)
 
@@ -280,8 +308,7 @@ def extract_deposits(yaml_file: Path) -> List[DepositAnnotation]:
 
 
 def apply_deposit_annotations(
-    transactions: List[Transaction],
-    annotations_path: Path,
+    transactions: List[Transaction], annotations_path: Path
 ) -> List[Transaction]:
     """Apply deposit annotations to transactions"""
 
@@ -291,10 +318,14 @@ def apply_deposit_annotations(
         for path in sorted(annotations_path.glob("deposits*.yaml")):
             all_deposits.extend(extract_deposits(path))
 
-    # Sort by date for predictable matching
+    # Sort both lists by date
     all_deposits.sort(key=lambda d: d.date)
+    transactions.sort(key=lambda t: t.posted_date)
 
-    # Match and annotate
+    # Track unmatched deposits
+    skipped_deposits = []
+
+    # Match and transform
     annotated = []
     for txn in transactions:
         if (
@@ -302,24 +333,37 @@ def apply_deposit_annotations(
             and txn.to_account == "assets:truist:checking"
         ):
 
+            # Skip deposits that are too old (more than 5 days before transaction)
+            while all_deposits and all_deposits[0].date < txn.posted_date - timedelta(
+                days=5
+            ):
+                skipped_deposits.append(all_deposits.pop(0))
+
+            # Find matching deposit: amount matches, deposit date <= bank date
+            match_idx = None
             for idx, deposit in enumerate(all_deposits):
                 if (
                     deposit.total_amount == txn.amount
                     and deposit.date <= txn.posted_date
                 ):
-                    deposit = all_deposits.pop(idx)
-                    txn = txn.with_updates(
-                        description=deposit.description,
-                        annotation=deposit,  # Just attach it
-                    )
+                    match_idx = idx
                     break
+
+            if match_idx is not None:
+                deposit = all_deposits.pop(match_idx)
+
+                # Transform transaction with annotation
+                txn = txn.with_updates(
+                    description=deposit.description, annotation=deposit
+                )
 
         annotated.append(txn)
 
     # Report unmatched deposits
-    if all_deposits:
-        print(f"\nWarning: {len(all_deposits)} unmatched deposit annotations:")
-        for d in all_deposits:
+    all_unmatched = skipped_deposits + all_deposits
+    if all_unmatched:
+        print(f"\nWarning: {len(all_unmatched)} unmatched deposit annotations:")
+        for d in all_unmatched:
             print(f"  {d.date}: ${d.total_amount} - {d.description}")
 
     return annotated

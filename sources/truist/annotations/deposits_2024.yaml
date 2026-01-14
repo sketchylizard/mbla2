@@ -14,6 +14,9 @@ deposits:
   checks:
     - {check: 8119, name: Ed & Sally Sutton, invoice: 20241200, amount: 150.00}
     - {check: 655275, name: Brenda Caverly, invoice: 20242300, amount: 150.00}
+
+- date: 2023-12-28
+  checks:
     - {check: 8890, name: Randy & Lynn Stephenson, invoice: 20241000, amount: 150.00}
     - {check: 1757, name: Jason & Kim Stewart, invoice: 20241800, amount: 150.00}
 
