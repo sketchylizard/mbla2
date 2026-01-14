@@ -12,7 +12,7 @@ import sys
 import yaml
 
 from hoa import config
-from hoa.models import DepositAnnotation, CheckDetail, Transaction, Source
+from hoa.models import DepositAnnotation, CheckDetail, Invoice, Transaction, Source
 from hoa import accounts
 from hoa.members import MemberDirectory, Lot
 
@@ -271,7 +271,7 @@ def extract_deposits(yaml_file: Path) -> List[DepositAnnotation]:
                         payer_name=check["name"],
                         amount=Decimal(check["amount"]),
                         lot=check.get("lot") or None,
-                        invoice=check.get("invoice") or None,
+                        invoice=Invoice.from_str(check.get("invoice")) or None,
                     )
                 )
             deposits.append(DepositAnnotation(date=date, checks=checks))

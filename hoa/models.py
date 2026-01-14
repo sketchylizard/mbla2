@@ -29,12 +29,74 @@ class Source:
     line: int | None  # line number or item index within file
 
 
+from dataclasses import dataclass
+from typing import Self
+
+
+@dataclass(frozen=True)
+class Invoice:
+    """
+    Invoice number format: YYYYLLXX
+    - YYYY: 4-digit year
+    - LL: 2-digit lot number (zero-padded)
+    - XX: 2-digit serial (00 = dues invoice)
+    """
+
+    invoice_number: str
+
+    def __post_init__(self):
+        # Coerce to string in case it came in as int
+        invoice_str = str(self.invoice_number)
+
+        # Use object.__setattr__ because dataclass is frozen
+        object.__setattr__(self, "invoice_number", invoice_str)
+
+        if len(invoice_str) != 8:
+            raise ValueError(f"Invoice number must be 8 characters, got: {invoice_str}")
+
+        # Validate format
+        if not invoice_str.isdigit():
+            raise ValueError(f"Invoice number must be all digits, got: {invoice_str}")
+
+    @property
+    def year(self) -> int:
+        return int(self.invoice_number[0:4])
+
+    @property
+    def lot(self) -> int:
+        return int(self.invoice_number[4:6])
+
+    @property
+    def serial(self) -> int:
+        return int(self.invoice_number[6:8])
+
+    @property
+    def is_dues(self) -> bool:
+        return self.serial == 0
+
+    def __str__(self) -> str:
+        return self.invoice_number
+
+    @classmethod
+    def create(cls, year: int, lot: int, serial: int = 0) -> Self:
+        """Factory method to create invoice from components"""
+        invoice_str = f"{year:04d}{lot:02d}{serial:02d}"
+        return cls(invoice_str)
+
+    @classmethod
+    def from_str(cls, s: str | None) -> Self | None:
+        """Safe constructor that returns None for empty/None input"""
+        if not s:
+            return None
+        return cls(s)
+
+
 @dataclass
 class Posting:
     account: str = ""
     amount: Decimal = Decimal(0)
     lot: int = None
-    invoice: str = None
+    invoice: Invoice | None = None
     reference: str = None
 
     @classmethod
@@ -43,7 +105,7 @@ class Posting:
             account=d["account"],
             amount=Decimal(str(d["amount"])),
             lot=d.get("lot"),
-            invoice=d.get("invoice"),
+            invoice=Invoice.create(d.get("invoice")),
         )
 
 
@@ -60,8 +122,8 @@ class CheckDetail:
     check_number: str | None
     payer_name: str
     amount: Decimal
-    lot: int | None
-    invoice: str | None
+    lot: Invoice | None
+    invoice: Invoice | None
 
 
 @dataclass
@@ -89,7 +151,7 @@ class DepositAnnotation:
         for check in self.checks:
             postings.append(
                 Posting(
-                    account=f"income:dues:{txn.posted_date.year}",
+                    account=f"income:dues:{check.invoice.year if check.invoice else None}",
                     amount=-check.amount,
                     lot=check.lot,
                     invoice=check.invoice,

@@ -92,7 +92,7 @@ class Journal:
                 posting.account,
                 int(posting.amount * 100),  # store as integer cents
                 posting.lot,
-                posting.invoice,
+                str(posting.invoice),
                 posting.reference,
             ),
         )
