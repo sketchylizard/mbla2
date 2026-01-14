@@ -1,0 +1,74 @@
+deposits:
+
+- date: 2023-12-26
+  checks:
+    - {check: 1425, name: Karen Ladd, invoice: 20244000, amount: 150.00}
+    - {check: 9337, name: Alan McGinigle & Beth Pekarek, invoice: 20244300, amount: 150.00}
+    - {check: 9084, name: Judi & Ed Helsing, invoice: 20242800, amount: 150.00}
+    - {check: 994, name: Richard Billings & Joan Cahill, invoice: 20241600, amount: 150.00}
+    - {check: 403, name: Nathalie Worthington, invoice: 20242000, amount: 150.00}
+    - {check: 5330, name: Dennis & Dawn Streets, invoice: 20244700, amount: 150.00}
+    - {check: 616974, name: Harry & Amy Bulbrook, invoice: 20243200, amount: 150.00}
+
+- date: 2023-12-28
+  checks:
+    - {check: 8119, name: Ed & Sally Sutton, invoice: 20241200, amount: 150.00}
+    - {check: 655275, name: Brenda Caverly, invoice: 20242300, amount: 150.00}
+    - {check: 8890, name: Randy & Lynn Stephenson, invoice: 20241000, amount: 150.00}
+    - {check: 1757, name: Jason & Kim Stewart, invoice: 20241800, amount: 150.00}
+
+- date: 2024-01-10
+  checks:
+    - {check: 2291, name: David Donlon & Julia Thorp, invoice: 20241400, amount: 150.00}
+
+- date: 2024-01-22
+  checks:
+    - {check: 4139, name: Clayton & Susan Rodgers, invoice: 20241500, amount: 150.00}
+
+- date: 2024-01-22
+  checks:
+    - {check: 3289, name: Scotty Young & Diane Swan, invoice: 20244500, amount: 150.00}
+
+- date: 2024-01-22
+  checks:
+    - {check: 103, name: Angela Ray & Cheryl Currie, invoice: 20240900, amount: 150.00}
+
+- date: 2024-02-05
+  checks:
+    - {check: 3426, name: Sultan & Elaine Jabbour, invoice: 20243500, amount: 150.00}
+
+- date: 2024-02-06
+  checks:
+    - {check: cash, name: Harold Vogel, invoice: 20242500, amount: 150.00}
+
+- date: 2024-02-07
+  checks:
+    - {check: 4641, name: Paul Stratton, invoice: 20242700, amount: 150.00}
+
+- date: 2024-02-10
+  checks:
+    - {check: 2945, name: John Brading, invoice: 20240600, amount: 150.00}
+
+- date: 2024-02-12
+  checks:
+    - {check: 3273, name: Michael Turnage & Susan Bowyer, invoice: 20242900, amount: 150.00}
+
+- date: 2024-02-12
+  checks:
+    - {check: 1687, name: Jennifer Chester, invoice: 20242200, amount: 150.00}
+
+- date: 2024-02-12
+  checks:
+    - {check: 1334, name: Benjamin N. Collins, invoice: 20241100, amount: 150.00}
+
+- date: 2024-02-24
+  checks:
+    - {check: 2533, name: Jerry & Robin Richardson, invoice: 20243300, amount: 150.00}
+
+- date: 2024-02-25
+  checks:
+    - {check: 792, name: Cynthia Williams, invoice: 20240700, amount: 150.00}
+
+- date: 2024-02-28
+  checks:
+    - {check: , name: Charles (Chuck) & Heather Holly, invoice: 20243700, amount: 150.00}

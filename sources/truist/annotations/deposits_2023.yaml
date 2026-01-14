@@ -1,0 +1,78 @@
+deposits:
+
+- date: 2023-01-17
+  checks:
+    - {check: 8858, name: Randy & Lynn Stephenson, invoice: 20231000, amount: 150.00}
+
+- date: 2023-02-27
+  checks:
+    - {check: 1870, name: Kelly Blair, invoice: 20231700, amount: 75.00}
+    - {check: 5392, name: Dennis & Dawn Streets, invoice: 20234700, amount: 150.00}
+    - {check: 654, name: Carmen & John Rice, invoice: 20232400, amount: 150.00}
+    - {check: 2298, name: Ken & Debbie Tunnell, invoice: 20230200, amount: 150.00}
+    - {check: 776, name: Cynthia Williams, invoice: 20230700, amount: 150.00}
+    - {check: 2912, name: John Brading, invoice: 20230600, amount: 150.00}
+    - {check: 983, name: Richard Billings & Joan Cahill, invoice: 20231600, amount: 150.00}
+    - {check: 4092, name: Clayton & Susan Rodgers, invoice: 20231500, amount: 150.00}
+    - {check: 288668, name: Harry & Amy Bulbrook, invoice: 20233200, amount: 150.00}
+    - {check: 9185, name: Alan McGinigle & Beth Pekarek, invoice: 20234300, amount: 150.00}
+    - {check: 1316, name: Karen Ladd, invoice: 20234000, amount: 150.00}
+    - {check: 1661, name: Chris Canfield & Kate Finlayson, invoice: 20234800, amount: 150.00}
+    - {check: 7984, name: Ed & Sally Sutton, invoice: 20231200, amount: 150.00}
+
+- date: 2023-03-13
+  checks:
+    - {check: , name: Jason & Kim Stewart, invoice: 20231800, amount: 150.00}
+    - {check: 1137, name: Kelsey Akins, invoice: 20234200, amount: 150.00}
+    - {check: 53297060, name: Rodger & Rebecca Bagley, invoice: 20234600, amount: 150.00}
+    - {check: 8377, name: Jay Sloan & Trish Welsh, invoice: 20234400, amount: 150.00}
+
+- date: 2023-03-16
+  checks:
+    - {check: 1771, name: Gerald & Hui Cook, invoice: 20233000, amount: 150.00}
+    - {check: 9034, name: Judi & Ed Helsing, invoice: 20232800, amount: 150.00}
+
+- date: 2023-03-27
+  checks:
+    - {check: 3633, name: David Donlon & Julia Thorp, invoice: 20231400, amount: 150.00}
+    - {check: 441835, name: Brenda Caverly, invoice: 20232300, amount: 150.00}
+    - {check: 1031, name: John & Melissa Laign, invoice: 20232600, amount: 150.00}
+    - {check: 1234, name: Benjamin N. Collins, invoice: 20231100, amount: 150.00}
+
+- date: 2023-04-03
+  checks:
+    - {check: 1540, name: Angela Ray & Cheryl Currie, invoice: 20230900, amount: 150.00}
+    - {check: , name: Transfer from Venmo, invoice: 20233100, amount: 300.00}
+    - {check: , name: Transfer from Venmo, invoice: 20233600, amount: 750.00}
+
+- date: 2023-04-18
+  checks:
+    - {check: 3413, name: Sultan & Elaine Jabbour, invoice: 20233500, amount: 150.00}
+
+- date: 2023-05-08
+  checks:
+    - {check: 3233, name: Michael Turnage & Susan Bowyer, invoice: 20232900, amount: 150.00}
+    - {check: 1342, name: Jennifer Chester, invoice: 20232200, amount: 150.00}
+    - {check: 2947, name: Harold Vogel, invoice: 20232500, amount: 150.00}
+
+- date: 2023-05-09
+  checks:
+    - {check: , name: Nathalie Worthington, invoice: 20232000, amount: 150.00}
+
+- date: 2023-05-16
+  checks:
+    - {check: 3239, name: Jerry & Robin Richardson, invoice: 20233300, amount: 150.00}
+
+- date: 2023-06-05
+  checks:
+    - {check: 8118, name: Charles (Chuck) & Heather Holly, invoice: 20233700, amount: 150.00}
+    - {check: , name: Transfer from Venmo, invoice: 20233400, amount: 150.00}
+
+- date: 2023-06-26
+  checks:
+    - {check: 4638, name: Paul Stratton, invoice: 20232700, amount: 150.00}
+    - {check: 992, name: Kevin Tull, invoice: 20230800, amount: 150.00}
+
+- date: 2023-08-28
+  checks:
+    - {check: 57277743, name: Zeke Keles, invoice: 20230400, amount: 150.00}
