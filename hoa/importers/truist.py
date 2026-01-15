@@ -54,19 +54,19 @@ def transaction_from_csv_row(
 
     posted_date = parse_date(row["Posted Date"])
     amount = parse_amount(row["Amount"])
-    description = row.get("Full description", "").strip()
+    description = row.get("Full description", "").strip().capitalize()
     source_type = row.get("Transaction Type", "").strip().lower()
     check_number = row.get("Check/Serial #", "").strip()
 
     # Determine semantic type and accounts based on amount and description
 
     # Handle known transfer patterns first
-    match = re.match(r"ONLINE (FROM|TO) \**(\d+)", description)
+    match = re.match(r"Online (from|to) \**(\d+)", description)
     if match:
         direction = match.group(1)
         other_account = accounts.normalize(match.group(2))
 
-        if direction == "FROM":
+        if direction == "from":
             assert amount > 0, f"Expected positive amount for {description}"
             return Transaction(
                 event_id=event_id,
@@ -81,7 +81,7 @@ def transaction_from_csv_row(
                 source=Source(str(path), line_no),
             )
 
-        if direction == "TO":
+        if direction == "to":
             assert amount < 0, f"Expected negative amount for {description}"
             return Transaction(
                 event_id=event_id,
@@ -96,7 +96,7 @@ def transaction_from_csv_row(
                 source=Source(str(path), line_no),
             )
 
-    match = re.match(r"CASHOUT VENMO (\d+)", description)
+    match = re.match(r"Cashout venmo (\d+)", description)
     if match:
         return Transaction(
             event_id=event_id,
