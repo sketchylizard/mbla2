@@ -1,73 +1,73 @@
 deposits:
+  - date: 2025-02-28
+    checks:
+      - { name: Harold Vogel, invoice: "20252500", check: "cash", amount: "150.00" }
 
-- date: 2024-12-04
-  checks:
-    - {check: 3445, name: Sultan & Elaine Jabbour, invoice: 20253500, amount: 150.00}
+  - date: 2025-02-27
+    checks:
+      - { name: Paul Stratton, invoice: "20252700", check: "#126", amount: "150.00" }
 
-- date: 2024-12-14
-  checks:
-    - {check: 9524, name: Alan McGinigle & Beth Pekarek, invoice: 20254300, amount: 150.00}
+  - date: 2025-02-27
+    checks:
+      - { name: David Donlon & Julia Thorp, invoice: "20251400", check: "#3645", amount: "150.00" }
 
-- date: 2024-12-16
-  checks:
-    - {check: 449, name: Nathalie Worthington, invoice: 20252000, amount: 150.00}
+  - date: 2025-02-20
+    checks:
+      - { name: John Brading, invoice: "20250600", check: "#2995", amount: "150.00" }
 
-- date: 2024-12-18
-  checks:
-    - {check: 1518, name: Karen Ladd, invoice: 20254000, amount: 150.00}
+  - date: 2025-02-04
+    checks:
+      - { name: John & Melissa Laign, invoice: "20252600", check: "#0000", amount: "150.00" }
 
-- date: 2024-12-19
-  checks:
-    - {check: 3279, name: Michael Turnage & Susan Bowyer, invoice: 20252900, amount: 150.00}
+  - date: 2025-01-19
+    checks:
+      - { name: Clayton & Susan Rodgers, invoice: "20251500", check: "#4204", amount: "150.00" }
 
-- date: 2024-02-12
-  checks:
-    - {check: 8933, name: Randy & Lynn Stephenson, invoice: 20251000, amount: 150.00}
+  - date: 2025-01-01
+    checks:
+      - { name: Angela Ray & Cheryl Currie, invoice: "20250900", check: "#129", amount: "150.00" }
 
-- date: 2024-02-12
-  checks:
-    - {check: 1598, name: Benjamin N. Collins, invoice: 20251100, amount: 150.00}
+  - date: 2024-12-29
+    checks:
+      - { name: Judi & Ed Helsing, invoice: "20252800", check: "#1025", amount: "150.00" }
 
-- date: 2024-02-12
-  checks:
-    - {check: 4636, name: Harry & Amy Bulbrook, invoice: 20253200, amount: 150.00}
+  - date: 2024-12-26
+    checks:
+      - { name: Brenda Caverly, invoice: "20252300", check: "#198942", amount: "150.00" }
 
-- date: 2024-12-23
-  checks:
-    - {check: 812, name: Cynthia Williams, invoice: 20250700, amount: 150.00}
+  - date: 2024-12-23
+    checks:
+      - { name: Cynthia Williams, invoice: "20250700", check: "#812", amount: "150.00" }
 
-- date: 2024-12-26
-  checks:
-    - {check: 198942, name: Brenda Caverly, invoice: 20252300, amount: 150.00}
+  - date: 2024-12-19
+    checks:
+      - { name: Michael Turnage & Susan Bowyer, invoice: "20252900", check: "#3279", amount: "150.00" }
 
-- date: 2024-12-29
-  checks:
-    - {check: 1025, name: Judi & Ed Helsing, invoice: 20252800, amount: 150.00}
+  - date: 2024-12-19
+    checks:
+      - { name: Randy & Lynn Stephenson, invoice: "20251000", check: "#8933", amount: "150.00" }
 
-- date: 2025-01-01
-  checks:
-    - {check: 129, name: Angela Ray & Cheryl Currie, invoice: 20250900, amount: 150.00}
+  - date: 2024-12-19
+    checks:
+      - { name: Benjamin N. Collins, invoice: "20251100", check: "#1598", amount: "150.00" }
 
-- date: 2025-01-19
-  checks:
-    - {check: 4204, name: Clayton & Susan Rodgers, invoice: 20251500, amount: 150.00}
+  - date: 2024-12-19
+    checks:
+      - { name: Harry & Amy Bulbrook, invoice: "20253200", check: "#4636", amount: "150.00" }
 
-- date: 2025-02-04
-  checks:
-    - {check: 0000, name: John & Melissa Laign, invoice: 20252600, amount: 150.00}
+  - date: 2024-12-18
+    checks:
+      - { name: Karen Ladd, invoice: "20254000", check: "#1518", amount: "150.00" }
 
-- date: 2025-02-20
-  checks:
-    - {check: 2995, name: John Brading, invoice: 20250600, amount: 150.00}
+  - date: 2024-12-16
+    checks:
+      - { name: Nathalie Worthington, invoice: "20252000", check: "#449", amount: "150.00" }
 
-- date: 2025-02-27
-  checks:
-    - {check: 126, name: Paul Stratton, invoice: 20252700, amount: 150.00}
+  - date: 2024-12-14
+    checks:
+      - { name: Alan McGinigle & Beth Pekarek, invoice: "20254300", check: "#9524", amount: "150.00" }
 
-- date: 2024-02-12
-  checks:
-    - {check: 3645, name: David Donlon & Julia Thorp, invoice: 20251400, amount: 150.00}
-
-- date: 2025-02-28
-  checks:
-    - {check: cash, name: Harold Vogel, invoice: 20252500, amount: 150.00}
+  - date: 2024-12-04
+    checks:
+      - { name: Sultan & Elaine Jabbour, invoice: "20253500", check: "#3445", amount: "150.00" }
+ 
