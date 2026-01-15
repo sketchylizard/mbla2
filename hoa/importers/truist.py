@@ -302,7 +302,13 @@ def extract_deposit_annotations(yaml_file: Path) -> List[DepositAnnotation]:
                         invoice=Invoice.from_str(check.get("invoice")) or None,
                     )
                 )
-            deposits.append(DepositAnnotation(date=date, checks=checks))
+            deposits.append(
+                DepositAnnotation(
+                    date=date,
+                    checks=checks,
+                    posted_date=dep.get("posted_date"),  # Optional field
+                )
+            )
 
     return deposits
 
@@ -310,9 +316,16 @@ def extract_deposit_annotations(yaml_file: Path) -> List[DepositAnnotation]:
 def apply_deposit_annotations(
     transactions: List[Transaction],
     annotations_path: Path,
-    max_days_after: int = 14,  # Bank posts within 2 weeks of deposit
+    max_days_after: int = 14,
+    verbose: bool = False,
 ) -> List[Transaction]:
-    """Apply deposit annotations to transactions"""
+    """
+    Apply deposit annotations to transactions.
+
+    Matches deposits to bank transactions using either:
+    - The deposit date + max_days_after window, OR
+    - An explicit posted_date if specified in the annotation
+    """
     from hoa.models import TxType
     from datetime import timedelta
 
@@ -322,12 +335,12 @@ def apply_deposit_annotations(
         for path in sorted(annotations_path.glob("*.yaml")):
             all_deposits.extend(extract_deposit_annotations(path))
 
-    # Sort both lists by date
-    all_deposits.sort(key=lambda d: d.date)
-    transactions.sort(key=lambda t: t.posted_date)
+    if not all_deposits:
+        return transactions
 
-    print(f"\nLoaded {len(all_deposits)} deposit annotations")
-    print(f"Processing {len(transactions)} transactions")
+    # Sort both lists by matching_date (which uses posted_date if available)
+    all_deposits.sort(key=lambda d: d.matching_date)
+    transactions.sort(key=lambda t: t.posted_date)
 
     # Filter to only deposit transactions
     deposit_txns = [
@@ -336,20 +349,32 @@ def apply_deposit_annotations(
         if txn.type == TxType.deposit and txn.to_account == "assets:truist:checking"
     ]
 
-    print(f"Found {len(deposit_txns)} deposit transactions to match")
-
-    matched_count = 0
-    unmatched_deposits = []
-    unmatched_txns = []
+    if verbose:
+        print(f"\nLoaded {len(all_deposits)} deposit annotations")
+        print(f"Found {len(deposit_txns)} deposit transactions to match")
 
     # Create a working copy of transactions that we can mark as matched
     txn_matched = {id(txn): False for txn in deposit_txns}
+
+    # Create a map of deposit annotations
+    deposit_map = {}
+    matched_deposits = set()
 
     # For each deposit annotation, find matching transaction
     for deposit in all_deposits:
         match_found = False
 
-        # Look for transactions on or after deposit date (within window)
+        # Determine matching window
+        if deposit.posted_date:
+            # Exact date match only when posted_date is specified
+            start_date = deposit.posted_date
+            end_date = deposit.posted_date
+        else:
+            # Normal window when using check date
+            start_date = deposit.date
+            end_date = deposit.date + timedelta(days=max_days_after)
+
+        # Look for transactions within the window
         for txn in deposit_txns:
             # Skip if already matched
             if txn_matched[id(txn)]:
@@ -357,75 +382,76 @@ def apply_deposit_annotations(
 
             # Check if this transaction could match this deposit
             if (
-                txn.posted_date >= deposit.date
-                and txn.posted_date <= deposit.date + timedelta(days=max_days_after)
+                txn.posted_date >= start_date
+                and txn.posted_date <= end_date
                 and txn.amount == deposit.total_amount
             ):
 
-                print(
-                    f"MATCH: Deposit {deposit.date} ${deposit.total_amount} → Transaction {txn.posted_date}"
-                )
+                if verbose:
+                    if deposit.posted_date:
+                        print(
+                            f"MATCH: Deposit {deposit.date} (posted {deposit.posted_date}) ${deposit.total_amount} → Transaction {txn.posted_date}"
+                        )
+                    else:
+                        print(
+                            f"MATCH: Deposit {deposit.date} ${deposit.total_amount} → Transaction {txn.posted_date}"
+                        )
+
+                # Store in map for later application
+                key = (txn.posted_date, txn.amount, id(txn))
+                deposit_map[key] = deposit
+                matched_deposits.add(id(deposit))
 
                 # Mark this transaction as matched
                 txn_matched[id(txn)] = True
-                matched_count += 1
                 match_found = True
-
-                # Attach annotation to transaction
-                # We need to update the transaction in the original list
                 break
-
-        if not match_found:
-            unmatched_deposits.append(deposit)
-
-    # Find unmatched transactions
-    for txn in deposit_txns:
-        if not txn_matched[id(txn)]:
-            unmatched_txns.append(txn)
-
-    # Now rebuild the transactions list with annotations
-    # Create a map of deposit annotations by (date_range, amount)
-    deposit_map = {}
-    for deposit in all_deposits:
-        for days_offset in range(max_days_after + 1):
-            key = (deposit.date + timedelta(days=days_offset), deposit.total_amount)
-            if key not in deposit_map:  # First match wins
-                deposit_map[key] = deposit
 
     # Apply annotations to transactions
     annotated = []
     for txn in transactions:
         if txn.type == TxType.deposit and txn.to_account == "assets:truist:checking":
 
-            key = (txn.posted_date, txn.amount)
+            key = (txn.posted_date, txn.amount, id(txn))
             if key in deposit_map:
                 deposit = deposit_map[key]
                 txn = txn.with_updates(
                     description=deposit.description, annotation=deposit
                 )
-                # Remove from map so it's not used again
-                del deposit_map[key]
 
         annotated.append(txn)
 
-    # Report results
-    print(f"\nMatched {matched_count} deposits")
+    # Report unmatched items if verbose
+    if verbose:
+        matched_count = len(matched_deposits)
+        print(f"\nMatched {matched_count} deposits")
 
-    if unmatched_deposits:
-        print(f"\nWarning: {len(unmatched_deposits)} unmatched deposit annotations:")
-        for d in unmatched_deposits:
-            print(f"  {d.date}: ${d.total_amount} - {d.description}")
-            for check in d.checks:
-                print(
-                    f"    - Check {check.check_number or 'CASH'} from {check.payer_name} for ${check.amount} (Invoice: {check.invoice})"
-                )
+        unmatched_deposits = [d for d in all_deposits if id(d) not in matched_deposits]
+        if unmatched_deposits:
+            print(
+                f"\nWarning: {len(unmatched_deposits)} unmatched deposit annotations:"
+            )
+            for d in unmatched_deposits:
+                posted_str = f" (posted {d.posted_date})" if d.posted_date else ""
+                print(f"  {d.date}{posted_str}: ${d.total_amount} - {d.description}")
+                for check in d.checks:
+                    check_num = (
+                        f"#{check.check_number}" if check.check_number else "cash"
+                    )
+                    invoice_str = (
+                        f" (Invoice: {check.invoice})" if check.invoice else ""
+                    )
+                    print(
+                        f"    - Check {check_num} from {check.payer_name} for ${check.amount}{invoice_str}"
+                    )
 
-    if unmatched_txns:
-        print(
-            f"\nWarning: {len(unmatched_txns)} bank transactions without annotations:"
-        )
-        for txn in unmatched_txns:
-            print(f"  {txn.posted_date}: ${txn.amount} - {txn.description}")
+        unmatched_txns = [txn for txn in deposit_txns if not txn_matched[id(txn)]]
+        if unmatched_txns:
+            print(
+                f"\nWarning: {len(unmatched_txns)} bank transactions without annotations:"
+            )
+            for txn in unmatched_txns:
+                print(f"  {txn.posted_date}: ${txn.amount} - {txn.description}")
 
     return annotated
 

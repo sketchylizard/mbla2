@@ -1,5 +1,6 @@
 deposits:
   - date: 2025-02-28
+    posted_date: 2025-08-12  # Forgot about his cash payment
     checks:
       - { name: Harold Vogel, invoice: "20252500", check: "cash", amount: "150.00" }
 
@@ -17,7 +18,7 @@ deposits:
 
   - date: 2025-02-04
     checks:
-      - { name: John & Melissa Laign, invoice: "20252600", check: "#0000", amount: "150.00" }
+      - { name: John & Melissa Laign, invoice: "20252600", check: "#132", amount: "150.00" }
 
   - date: 2025-01-19
     checks:

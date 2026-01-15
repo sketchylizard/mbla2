@@ -130,6 +130,12 @@ class CheckDetail:
 class DepositAnnotation:
     date: date
     checks: list[CheckDetail]
+    posted_date: date | None = None  # Optional: override for matching
+
+    @property
+    def matching_date(self) -> date:
+        """The date to use for matching against bank transactions"""
+        return self.posted_date if self.posted_date else self.date
 
     @property
     def total_amount(self) -> Decimal:
