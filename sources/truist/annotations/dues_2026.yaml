@@ -1,45 +1,45 @@
 deposits:
-- date: 2025-12-29
+- date: 2025-11-19
   checks:
   - {check: 483, name: Nathalie Worthington, amount: 200.00, invoice: 20262000}
 
-- date: 2025-12-29
+- date: 2025-12-12
   checks:
   - {check: 61693, name: Roger Efrid, amount: 150.00, invoice: 20263000}
 
-- date: 2025-12-29
+- date: 2025-12-26
+  checks:
+  - {check: 9722, name: Elizabeth Pekarek, amount: 200.00, invoice: 20264300}
+  
+- date: 2025-12-27
+  checks:
+  - {check: 2143, name: Sally Sutton, amount: 200.00, invoice: 20261200}
+  
+- date: 2025-12-28
+  checks:
+  - {check: 3022, name: John Brading, amount: 150.00, invoice: 20260600}
+  
+- date: 2025-12-28
   checks:
   - {check: 8976, name: Lynn Stephenson, amount: 150.00, invoice: 20261000}
 
+- date: 2025-12-28
+  checks:
+  - {check: 3460, name: Elaine Jabbour, amount: 150.00, invoice: 20263500}
+  
 - date: 2025-12-29
   checks:
   - {check: 1616, name: Karen Ladd, amount: 200.00, invoice: 20264000}
 
-- date: 2026-01-11
+- date: 2025-12-31
   checks:
   - {check: 679136, name: Brenda Caverly, amount: 150.00, invoice: 20262300}
   
-- date: 2026-01-11
-  checks:
-  - {check: 3022, name: John Brading, amount: 150.00, invoice: 20260600}
-  
-- date: 2026-01-11
-  checks:
-  - {check: 9722, name: Elizabeth Pekarek, amount: 200.00, invoice: 20264300}
-  
-- date: 2026-01-11
-  checks:
-  - {check: 2143, name: Sally Sutton, amount: 200.00, invoice: 20261200}
-  
-- date: 2026-01-11
-  checks:
-  - {check: 830, name: Cynthia Williams, amount: 200.00, invoice: 20260700}
-  
-- date: 2026-01-11
+- date: 2025-12-31
   checks:
   - {check: 3502, name: Scotty Young, amount: 200.00, invoice: 20264500}
   
-- date: 2026-01-11
+- date: 2026-01-03
   checks:
-  - {check: 3460, name: Elaine Jabbour, amount: 150.00, invoice: 20263500}
+  - {check: 830, name: Cynthia Williams, amount: 200.00, invoice: 20260700}
   
