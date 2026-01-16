@@ -100,14 +100,19 @@ def journal_entry_from_event(
     event: Transaction,
     directory: MemberDirectory,
 ) -> JournalEntry:
-    # If we have an annotation, use it to build postings
-    if event.annotation:
-        bank_posting = Posting(
-            account=event.to_account or event.from_account,
-            amount=event.amount if event.to_account else -event.amount,
-        )
 
+    # If we have an annotation with get_postings method, use it
+    if event.annotation and hasattr(event.annotation, "get_postings"):
+        # Could be DepositAnnotation or CategorizationRule
         contra_postings = event.annotation.get_postings(event)
+
+        # The bank side posting
+        if event.from_account:
+            # Money leaving
+            bank_posting = Posting(account=event.from_account, amount=-event.amount)
+        else:
+            # Money arriving
+            bank_posting = Posting(account=event.to_account, amount=event.amount)
 
         return JournalEntry(
             posted_date=event.posted_date,
@@ -120,13 +125,13 @@ def journal_entry_from_event(
             transfer_source=event.transfer_source,
         )
 
-    # Existing two-posting logic for unannotated transactions
+    # Otherwise, use existing two-posting logic
+    lot = directory.find_lot_by_name(event.description)
+
     from_account = event.from_account
     to_account = event.to_account
     memo = event.memo
 
-    # Expedient lot-based account substitution
-    lot = directory.find_lot_by_name(event.description)
     if lot:
         lot_str = ", ".join(str(l) for l in lot)
         memo = f"{memo or ''} [Lot(s): {lot_str}]".strip()

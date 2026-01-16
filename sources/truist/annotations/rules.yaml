@@ -1,0 +1,25 @@
+rules:
+  # Specific rules first
+  
+  - pattern: "[Nn]ationwide"
+    description: "Nationwide Insurance"
+    account: "expenses:insurance"
+  
+  - pattern: "Check\\s*#\\s*\\d+"
+    amount: 250.00
+    description: "San Remo Landscaping"
+    account: "expenses:landscaping"
+  
+  - pattern: "Interest payment"
+    account: "income:interest"
+  
+  - pattern: "Service charge"
+    account: "expenses:fees"
+  
+  # General catch-all rules last
+  
+  - pattern: "[Ll]andscaping"
+    account: "expenses:landscaping"
+  
+  - pattern: "[Ii]nsurance"
+    account: "expenses:insurance"

@@ -117,56 +117,6 @@ class Annotation(Protocol):
         ...
 
 
-@dataclass
-class CheckDetail:
-    check_number: str | None
-    payer_name: str
-    amount: Decimal
-    lot: Invoice | None
-    invoice: Invoice | None
-
-
-@dataclass
-class DepositAnnotation:
-    date: date
-    checks: list[CheckDetail]
-    posted_date: date | None = None  # Optional: override for matching
-
-    @property
-    def matching_date(self) -> date:
-        """The date to use for matching against bank transactions"""
-        return self.posted_date if self.posted_date else self.date
-
-    @property
-    def total_amount(self) -> Decimal:
-        return sum(c.amount for c in self.checks)
-
-    @property
-    def description(self) -> str:
-        if len(self.checks) == 1:
-            return self.checks[0].payer_name
-        else:
-            names = ", ".join(c.payer_name for c in self.checks[:2])
-            if len(self.checks) > 2:
-                names += f", +{len(self.checks) - 2} more"
-            return f"Multiple deposits: {names}"
-
-    def get_postings(self, txn: Transaction) -> list[Posting]:
-        """Generate postings for this deposit"""
-        postings = []
-        for check in self.checks:
-            postings.append(
-                Posting(
-                    account=f"income:dues:{check.invoice.year if check.invoice else None}",
-                    amount=-check.amount,
-                    lot=check.lot,
-                    invoice=check.invoice,
-                    reference=check.check_number,
-                )
-            )
-        return postings
-
-
 @dataclass(frozen=True)
 class Transaction:
     # Identity / ordering

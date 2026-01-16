@@ -1,0 +1,31 @@
+rules:
+  - pattern: Check #\\d+
+    reference: 975007
+    amount: 600.00
+    description: Tree removal
+    memo: Emergency tree removal--split cost
+    postings:
+      - {account: expenses:other, amount: 150.00}
+      - {account: assets:receivables, amount: 150.00, lot: 12, invoice: 20241201}
+      - {account: assets:receivables, amount: 150.00, lot: 14, invoice: 20241401}
+      - {account: assets:receivables, amount: 150.00, lot: 15, invoice: 20241501}
+
+  - reference: 1056
+    description: Nationwide Insurance
+    account: expenses:insurance
+
+  - pattern: 
+    reference: 1057
+    description: Carolina Dock & Marine Construction
+    memo: Dock repair
+    account: expenses:pond
+
+  - reference: 975001
+    description: Carolina Dock & Marine Construction
+    memo: Structural assesment of dock
+    account: expenses:pond
+
+  - reference: 975002
+    description: Bagwell Holt Smith P.A.
+    memo: Consultation on covenant enforcement
+    account: expenses:legal

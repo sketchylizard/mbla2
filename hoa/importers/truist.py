@@ -12,7 +12,14 @@ import sys
 import yaml
 
 from hoa import config
-from hoa.models import DepositAnnotation, CheckDetail, Invoice, Transaction, Source
+from hoa.annotation import (
+    DepositAnnotation,
+    CategorizationRule,
+    load_annotations,
+    apply_categorization_rules,
+    apply_deposit_annotations,
+)
+from hoa.models import Invoice, Transaction, Source
 from hoa import accounts
 from hoa.members import MemberDirectory, Lot
 
@@ -38,6 +45,18 @@ def parse_date(value: str) -> str:
     return date
 
 
+def parse_reference(check_number: str, description: str) -> str | None:
+    check_number = check_number.strip()
+    if check_number:
+        return check_number
+
+    # Try to extract from description
+    match = re.search(r"Check\s*#\s*(\d+)", description, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+
 def transaction_from_csv_row(
     row: dict,
     account: str,
@@ -58,6 +77,8 @@ def transaction_from_csv_row(
     source_type = row.get("Transaction Type", "").strip().lower()
     check_number = row.get("Check/Serial #", "").strip()
 
+    reference = parse_reference(check_number, description)
+
     # Determine semantic type and accounts based on amount and description
 
     # Handle known transfer patterns first
@@ -75,7 +96,7 @@ def transaction_from_csv_row(
                 type=TxType.transfer,
                 from_account=other_account,
                 to_account=account,
-                reference=check_number or None,
+                reference=reference,
                 description=f"Transfer from {other_account}",
                 memo=None,
                 source=Source(str(path), line_no),
@@ -90,7 +111,7 @@ def transaction_from_csv_row(
                 type=TxType.transfer,
                 from_account=account,
                 to_account=other_account,
-                reference=check_number or None,
+                reference=reference or None,
                 description=f"Transfer to {other_account}",
                 memo=None,
                 source=Source(str(path), line_no),
@@ -105,7 +126,7 @@ def transaction_from_csv_row(
             type=TxType.transfer,
             from_account="assets:venmo",
             to_account=account,
-            reference=check_number or None,
+            reference=reference,
             description=f"Transfer from Venmo {match.group(1)}",
             memo=None,
             source=Source(str(path), line_no),
@@ -114,7 +135,7 @@ def transaction_from_csv_row(
     # Money leaving (negative amount)
     if amount < 0:
         # Determine semantic type based on description
-        if description.startswith("Check #"):
+        if reference:
             tx_type = TxType.check
         elif "FEE" in description.upper():
             tx_type = TxType.fee
@@ -128,7 +149,7 @@ def transaction_from_csv_row(
             type=tx_type,
             from_account=account,
             to_account=None,
-            reference=check_number or None,
+            reference=reference,
             description=description,
             memo=None,
             source=Source(str(path), line_no),
@@ -143,7 +164,7 @@ def transaction_from_csv_row(
         type=TxType.deposit,
         from_account=None,
         to_account=account,
-        reference=check_number or None,
+        reference=reference,
         description=description,
         memo=None,
         source=Source(str(path), line_no),
@@ -281,182 +302,8 @@ def extract_events(path: Path) -> List[Transaction]:
     return events
 
 
-def extract_deposit_annotations(yaml_file: Path) -> List[DepositAnnotation]:
-    deposits = []
-
-    with yaml_file.open(encoding="utf-8-sig") as f:
-        data = yaml.safe_load(f)
-
-        for dep in data["deposits"]:
-
-            date = dep["date"]
-            checks = []
-
-            for check in dep["checks"]:
-                checks.append(
-                    CheckDetail(
-                        check_number=check.get("check"),  # None for cash
-                        payer_name=check["name"],
-                        amount=Decimal(check["amount"]),
-                        lot=check.get("lot") or None,
-                        invoice=Invoice.from_str(check.get("invoice")) or None,
-                    )
-                )
-            deposits.append(
-                DepositAnnotation(
-                    date=date,
-                    checks=checks,
-                    posted_date=dep.get("posted_date"),  # Optional field
-                )
-            )
-
-    return deposits
-
-
-def apply_deposit_annotations(
-    transactions: List[Transaction],
-    annotations_path: Path,
-    max_days_after: int = 14,
-    verbose: bool = False,
-) -> List[Transaction]:
-    """
-    Apply deposit annotations to transactions.
-
-    Matches deposits to bank transactions using either:
-    - The deposit date + max_days_after window, OR
-    - An explicit posted_date if specified in the annotation
-    """
-    from hoa.models import TxType
-    from datetime import timedelta
-
-    # Load all deposit annotations
-    all_deposits = []
-    if annotations_path.is_dir():
-        for path in sorted(annotations_path.glob("*.yaml")):
-            all_deposits.extend(extract_deposit_annotations(path))
-
-    if not all_deposits:
-        return transactions
-
-    # Sort both lists by matching_date (which uses posted_date if available)
-    all_deposits.sort(key=lambda d: d.matching_date)
-    transactions.sort(key=lambda t: t.posted_date)
-
-    # Filter to only deposit transactions
-    deposit_txns = [
-        txn
-        for txn in transactions
-        if txn.type == TxType.deposit and txn.to_account == "assets:truist:checking"
-    ]
-
-    if verbose:
-        print(f"\nLoaded {len(all_deposits)} deposit annotations")
-        print(f"Found {len(deposit_txns)} deposit transactions to match")
-
-    # Create a working copy of transactions that we can mark as matched
-    txn_matched = {id(txn): False for txn in deposit_txns}
-
-    # Create a map of deposit annotations
-    deposit_map = {}
-    matched_deposits = set()
-
-    # For each deposit annotation, find matching transaction
-    for deposit in all_deposits:
-        match_found = False
-
-        # Determine matching window
-        if deposit.posted_date:
-            # Exact date match only when posted_date is specified
-            start_date = deposit.posted_date
-            end_date = deposit.posted_date
-        else:
-            # Normal window when using check date
-            start_date = deposit.date
-            end_date = deposit.date + timedelta(days=max_days_after)
-
-        # Look for transactions within the window
-        for txn in deposit_txns:
-            # Skip if already matched
-            if txn_matched[id(txn)]:
-                continue
-
-            # Check if this transaction could match this deposit
-            if (
-                txn.posted_date >= start_date
-                and txn.posted_date <= end_date
-                and txn.amount == deposit.total_amount
-            ):
-
-                if verbose:
-                    if deposit.posted_date:
-                        print(
-                            f"MATCH: Deposit {deposit.date} (posted {deposit.posted_date}) ${deposit.total_amount} → Transaction {txn.posted_date}"
-                        )
-                    else:
-                        print(
-                            f"MATCH: Deposit {deposit.date} ${deposit.total_amount} → Transaction {txn.posted_date}"
-                        )
-
-                # Store in map for later application
-                key = (txn.posted_date, txn.amount, id(txn))
-                deposit_map[key] = deposit
-                matched_deposits.add(id(deposit))
-
-                # Mark this transaction as matched
-                txn_matched[id(txn)] = True
-                match_found = True
-                break
-
-    # Apply annotations to transactions
-    annotated = []
-    for txn in transactions:
-        if txn.type == TxType.deposit and txn.to_account == "assets:truist:checking":
-
-            key = (txn.posted_date, txn.amount, id(txn))
-            if key in deposit_map:
-                deposit = deposit_map[key]
-                txn = txn.with_updates(
-                    description=deposit.description, annotation=deposit
-                )
-
-        annotated.append(txn)
-
-    # Report unmatched items if verbose
-    if verbose:
-        matched_count = len(matched_deposits)
-        print(f"\nMatched {matched_count} deposits")
-
-        unmatched_deposits = [d for d in all_deposits if id(d) not in matched_deposits]
-        if unmatched_deposits:
-            print(
-                f"\nWarning: {len(unmatched_deposits)} unmatched deposit annotations:"
-            )
-            for d in unmatched_deposits:
-                posted_str = f" (posted {d.posted_date})" if d.posted_date else ""
-                print(f"  {d.date}{posted_str}: ${d.total_amount} - {d.description}")
-                for check in d.checks:
-                    check_num = (
-                        f"#{check.check_number}" if check.check_number else "cash"
-                    )
-                    invoice_str = (
-                        f" (Invoice: {check.invoice})" if check.invoice else ""
-                    )
-                    print(
-                        f"    - Check {check_num} from {check.payer_name} for ${check.amount}{invoice_str}"
-                    )
-
-        unmatched_txns = [txn for txn in deposit_txns if not txn_matched[id(txn)]]
-        if unmatched_txns:
-            print(
-                f"\nWarning: {len(unmatched_txns)} bank transactions without annotations:"
-            )
-            for txn in unmatched_txns:
-                print(f"  {txn.posted_date}: ${txn.amount} - {txn.description}")
-
-    return annotated
-
-
 def process(truist_root: Path) -> List[Transaction]:
+    # Stage 1: Extract raw transactions from CSV
     events: List[Transaction] = []
 
     statements_path = truist_root / "statements"
@@ -466,9 +313,14 @@ def process(truist_root: Path) -> List[Transaction]:
     for path in sorted(statements_path.glob("*.csv")):
         events.extend(extract_events(path))
 
-    deposits_path = truist_root / "annotations"
+    # Stage 2: Load all annotations (both rules and deposits)
+    rules, deposits = load_annotations(truist_root / "annotations")
 
-    events = apply_deposit_annotations(events, deposits_path)
+    # Stage 3: Apply categorization rules
+    events = apply_categorization_rules(events, rules)
+
+    # Stage 4: Apply deposit annotations
+    events = apply_deposit_annotations(events, deposits)
 
     return events
 
