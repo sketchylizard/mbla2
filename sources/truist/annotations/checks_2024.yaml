@@ -2,7 +2,7 @@ rules:
   - pattern: Check #\\d+
     reference: 975007
     amount: 600.00
-    description: Tree removal
+    description: Tyndell Lawn & Tree Service
     memo: Emergency tree removal--split cost
     postings:
       - {account: expenses:other, amount: 150.00}

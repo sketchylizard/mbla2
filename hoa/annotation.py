@@ -298,11 +298,6 @@ def apply_categorization_rules(
     for txn in transactions:
         # Try each rule in order (first match wins)
         for rule in rules:
-            if rule.description and rule.description.startswith("San Remo"):
-                print(
-                    f"Checking rule '{rule.description}' against transaction '{txn.description}'"
-                )
-
             if rule.matches(txn):
                 if verbose:
                     old_desc = txn.description
