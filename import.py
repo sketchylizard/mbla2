@@ -166,10 +166,8 @@ def journal_entry_from_event(
         )
 
     postings = (
-        Posting(
-            account=from_account, amount=-event.amount, lot=lot[0] if lot else None
-        ),
-        Posting(account=to_account, amount=event.amount, lot=lot[0] if lot else None),
+        Posting(account=from_account, amount=-event.amount),
+        Posting(account=to_account, amount=event.amount),
     )
 
     return JournalEntry(

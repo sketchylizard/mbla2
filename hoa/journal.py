@@ -91,7 +91,7 @@ class Journal:
                 journal_id,
                 posting.account,
                 int(posting.amount * 100),  # store as integer cents
-                posting.lot,
+                posting.invoice.lot if posting.invoice else None,
                 str(posting.invoice),
                 posting.reference,
             ),

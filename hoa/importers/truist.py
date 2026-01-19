@@ -1,25 +1,19 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import List, DefaultDict, Tuple
+from typing import List, DefaultDict, Dict, Tuple
 import csv
 import re
 import sys
 import yaml
 
 from hoa import config
-from hoa.annotation import (
-    DepositAnnotation,
-    CategorizationRule,
-    load_annotations,
-    apply_categorization_rules,
-    apply_deposit_annotations,
-)
-from hoa.models import Invoice, Transaction, Source
+from hoa.annotation import Annotation
+from hoa.models import Invoice, Transaction, Source, TxType
 from hoa import accounts
 from hoa.members import MemberDirectory, Lot
 
@@ -69,13 +63,12 @@ def transaction_from_csv_row(
 
     Normalizes bank terminology into semantic transaction types.
     """
-    from hoa.models import TxType
 
     posted_date = parse_date(row["Posted Date"])
     amount = parse_amount(row["Amount"])
     description = row.get("Full description", "").strip().capitalize()
-    source_type = row.get("Transaction Type", "").strip().lower()
     check_number = row.get("Check/Serial #", "").strip()
+    category_name = row.get("Category name", "").strip().lower()
 
     reference = parse_reference(check_number, description)
 
@@ -157,11 +150,22 @@ def transaction_from_csv_row(
 
     # Money arriving (positive amount)
     assert amount > 0, f"Expected positive amount for {description}"
+
+    if category_name == "deposits" and description.lower() in (
+        "mobile deposit",
+        "deposit",
+        "counter deposit",
+    ):
+        assert reference is None, f"Expected no reference for deposit: {description}"
+        tx_type = TxType.deposit
+    else:
+        tx_type = TxType.credit
+
     return Transaction(
         event_id=event_id,
         posted_date=posted_date,
         amount=amount,
-        type=TxType.deposit,
+        type=tx_type,
         from_account=None,
         to_account=account,
         reference=reference,
@@ -302,6 +306,21 @@ def extract_events(path: Path) -> List[Transaction]:
     return events
 
 
+def load_yaml(path: Path) -> Any:
+    """Load YAML file, returns empty dict if file doesn't exist"""
+    if not path.exists():
+        return {}
+
+    with path.open("r") as f:
+        return yaml.safe_load(f) or {}
+
+
+def save_yaml(path: Path, data: Any) -> None:
+    """Save data to YAML file"""
+    with path.open("w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+
 def process(truist_root: Path) -> List[Transaction]:
     # Stage 1: Extract raw transactions from CSV
     events: List[Transaction] = []
@@ -310,17 +329,31 @@ def process(truist_root: Path) -> List[Transaction]:
     if not statements_path.is_dir():
         raise FileNotFoundError(f"Expected directory: {statements_path}")
 
+    counter_file = truist_root / "deposit_counter.yaml"
+    counters = load_yaml(counter_file) if counter_file.exists() else {}
+
     for path in sorted(statements_path.glob("*.csv")):
-        events.extend(extract_events(path))
+        file_events = extract_events(path)
+
+        for event in file_events:
+            if event.type != TxType.deposit:
+                events.append(event)
+            else:
+                year = event.posted_date.year
+                count = counters.get(year, 0) + 1
+                events.append(replace(event, reference=f"{year}-{count:03d}"))
+                counters[year] = count
+
+    save_yaml(counter_file, counters)
 
     # Stage 2: Load all annotations (both rules and deposits)
-    rules, deposits = load_annotations(truist_root / "annotations")
+    #    rules, deposits = load_annotations(truist_root / "annotations")
 
     # Stage 3: Apply categorization rules
-    events = apply_categorization_rules(events, rules)
+    #    events = apply_categorization_rules(events, rules)
 
     # Stage 4: Apply deposit annotations
-    events = apply_deposit_annotations(events, deposits)
+    #    events = apply_deposit_annotations(events, deposits)
 
     return events
 

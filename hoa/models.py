@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace, asdict
 from datetime import date
+from datetime import date
+from decimal import Decimal
 from decimal import Decimal
 from enum import Enum
 from hashlib import sha256
 from hoa import config
 from pathlib import Path
 from typing import Callable, List, Protocol
-
-from dataclasses import dataclass, replace, asdict
-from datetime import date
-from decimal import Decimal
-from typing import Optional, Iterable, TextIO, Dict, Any
+from typing import Optional, Iterable, TextIO, Dict, Any, Self
 import json
 
 
@@ -27,10 +25,6 @@ class Source:
 
     file: str  # path relative to sources/
     line: int | None  # line number or item index within file
-
-
-from dataclasses import dataclass
-from typing import Self
 
 
 @dataclass(frozen=True)
@@ -95,9 +89,8 @@ class Invoice:
 class Posting:
     account: str = ""
     amount: Decimal = Decimal(0)
-    lot: int = None
     invoice: Invoice | None = None
-    reference: str = None
+    reference: str | None = None
 
     @classmethod
     def from_annotation_dict(cls, d: dict) -> "Posting":
@@ -234,6 +227,7 @@ class Transaction:
 class TxType(str, Enum):
     fee = "fee"
     deposit = "deposit"
+    credit = "credit"
     check = "check"
     debit = "debit"
     transfer = "transfer"

@@ -1,67 +1,43 @@
-# 12/29/2025,12/29/2025,Credit,,MOBILE DEPOSIT,,Deposits,,$200.00,$2333.24
-# 12/29/2025,12/29/2025,Credit,,MOBILE DEPOSIT,,Deposits,,$200.00,$2333.24
-# 12/29/2025,12/29/2025,Credit,,MOBILE DEPOSIT,,Deposits,,$150.00,$2333.24
-# 12/29/2025,12/29/2025,Credit,,MOBILE DEPOSIT,,Deposits,,$150.00,$2333.24
-# 01/12/2026,01/12/2026,Credit,,MOBILE DEPOSIT,,Deposits,,$200.00,$4733.24
-# 01/12/2026,01/12/2026,Credit,,MOBILE DEPOSIT,,Deposits,,$200.00,$4733.24
-# 01/12/2026,01/12/2026,Credit,,MOBILE DEPOSIT,,Deposits,,$200.00,$4733.24
-# 01/12/2026,01/12/2026,Credit,,MOBILE DEPOSIT,,Deposits,,$200.00,$4733.24
-# 01/12/2026,01/12/2026,Credit,,MOBILE DEPOSIT,,Deposits,,$150.00,$4733.24
-# 01/12/2026,01/12/2026,Credit,,MOBILE DEPOSIT,,Deposits,,$150.00,$4733.24
-# 01/12/2026,01/12/2026,Credit,,MOBILE DEPOSIT,,Deposits,,$150.00,$4733.24
+- id: 2025-015
+  checks:
+  - { check_date: 2025-11-19, check_number: 483, name: Nathalie Worthington, amount: 200.00, invoice: 20262000}
 
-deposits:
-- date: 2025-11-19
-  posted_date: 2025-12-29
+- id: 2025-016
   checks:
-  - {check: 483, name: Nathalie Worthington, amount: 200.00, invoice: 20262000}
+  - { check_date: 2025-12-26, check_number: 9722, name: Elizabeth Pekarek, amount: 200.00, invoice: 20264300}
 
-- date: 2025-12-12
-  posted_date: 2025-12-29
+- id: 2025-017
   checks:
-  - {check: 61693, name: Roger Efrid, amount: 150.00, invoice: 20263000}
+  - { check_date: 2025-12-12, check_number: 61693, name: Roger Efrid, amount: 150.00, invoice: 20263000}
 
-- date: 2025-12-26
-  posted_date: 2025-12-29
+- id: 2025-001
   checks:
-  - {check: 9722, name: Elizabeth Pekarek, amount: 200.00, invoice: 20264300}
-  
-- date: 2025-12-27
-  posted_date: 2025-01-12
-  checks:
-  - {check: 2143, name: Sally Sutton, amount: 200.00, invoice: 20261200}
-  
-- date: 2025-12-28
-  posted_date: 2025-01-12
-  checks:
-  - {check: 3022, name: John Brading, amount: 150.00, invoice: 20260600}
-  
-- date: 2025-12-28
-  posted_date: 2025-01-12
-  checks:
-  - {check: 8976, name: Lynn Stephenson, amount: 150.00, invoice: 20261000}
+  - { check_date: 2025-12-28, check_number: 3022, name: John Brading, amount: 150.00, invoice: 20260600}
 
-- date: 2025-12-28
-  posted_date: 2025-12-29
+- id: 2026-002
   checks:
-  - {check: 3460, name: Elaine Jabbour, amount: 150.00, invoice: 20263500}
-  
-- date: 2025-12-29
-  posted_date: 2025-01-12
-  checks:
-  - {check: 1616, name: Karen Ladd, amount: 200.00, invoice: 20264000}
+  - { check_date: 2025-12-27, check_number: 2143, name: Sally Sutton, amount: 200.00, invoice: 20261200}
 
-- date: 2025-12-31
+- id: 2026-003
   checks:
-  - {check: 679136, name: Brenda Caverly, amount: 150.00, invoice: 20262300}
-  
-- date: 2025-12-31
-  posted_date: 2025-01-12
+  - { check_date: 2025-12-29, check_number: 1616, name: Karen Ladd, amount: 200.00, invoice: 20264000}
+
+- id: 2026-004
   checks:
-  - {check: 3502, name: Scotty Young, amount: 200.00, invoice: 20264500}
-  
-- date: 2026-01-03
-  posted_date: 2025-01-12
+  - { check_date: 2025-12-31, check_number: 3502, name: Scotty Young, amount: 200.00, invoice: 20264500}
+
+- id: 2026-005
   checks:
-  - {check: 830, name: Cynthia Williams, amount: 200.00, invoice: 20260700}
-  
+  - { check_date: 2026-01-03, check_number: 830, name: Cynthia Williams, amount: 200.00, invoice: 20260700}
+
+- id: 2026-006
+  checks:
+  - { check_date: 2025-12-28, check_number: 8976, name: Lynn Stephenson, amount: 150.00, invoice: 20261000}
+
+- id: 2026-007
+  checks:
+  - { check_date: 2025-12-28, check_number: 3460, name: Elaine Jabbour, amount: 150.00, invoice: 20263500}
+
+- id: 2026-008
+  checks:
+  - { check_date: 2025-12-31, check_number: 679136, name: Brenda Caverly, amount: 150.00, invoice: 20262300}
