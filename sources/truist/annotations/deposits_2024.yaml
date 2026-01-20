@@ -1,13 +1,17 @@
 deposits:
-
-  - date: 2024-08-11
+  - id: dep:2024-015
+    memo: Contingency fund
     checks:
-      - { name: David Donlon & Julia Thorp, invoice: "20241401", check: "#3639", amount: 150.00 }
-
-  - date: 2024-08-12
+      - { check_date: 2024-08-11, name: Lynn Stephenson, invoice: "20241401", check: "", amount: 50.00 }
+  
+  - id: dep:2024-016
     checks:
-      - { name: Clayton & Susan Rodgers, invoice: "20241501", check: "#4177", amount: 150.00 }
+      - { check_date: 2024-08-11, name: David Donlon & Julia Thorp, invoice: "20241401", check: "#3639", amount: 150.00 }
 
-  - date: 2024-08-11
+  - id: dep:2024-017
     checks:
-      - { name: Ed & Sally Sutton, invoice: "20241201", check: "#2097", amount: 150.00 }
+      - { check_date: 2024-08-12, name: Clayton & Susan Rodgers, invoice: "20241501", check: "#4177", amount: 150.00 }
+
+  - id: dep:2024-018
+    checks:
+      - { check_date: 2024-08-11, name: Ed & Sally Sutton, invoice: "20241201", check: "#2097", amount: 150.00 }

@@ -1,76 +1,76 @@
 deposits:
-  - date: 2024-02-29
-    checks:
-      - { name: Charles (Chuck) & Heather Holly, invoice: "20243700", check: "9106", amount: 150.00 }
+- id: dep:2023-001
+  checks:
+  - { check_date:  2023-12-26, name: Karen Ladd, invoice: "20244000", check_number: "1425", amount: 150.00 }
+  - { name: Alan McGinigle & Beth Pekarek, invoice: "20244300", check_number: "9337", amount: 150.00 }
+  - { name: Judi & Ed Helsing, invoice: "20242800", check_number: "9084", amount: 150.00 }
+  - { name: Richard Billings & Joan Cahill, invoice: "20241600", check_number: "994", amount: 150.00 }
+  - { name: Nathalie Worthington, invoice: "20242000", check_number: "403", amount: 150.00 }
+  - { name: Dennis & Dawn Streets, invoice: "20244700", check_number: "5330", amount: 150.00 }
+  - { name: Harry & Amy Bulbrook, invoice: "20243200", check_number: "616974", amount: 150.00 }
 
-  - date: 2024-02-26
-    checks:
-      - { name: Cynthia Williams, invoice: "20240700", check: "792", amount: 150.00 }
+- id: dep:2023-002
+  checks:
+  - { check_date:  2023-12-28, name: Randy & Lynn Stephenson, invoice: "20241000", check_number: "8890", amount: 150.00 }
+  - { name: Jason & Kim Stewart, invoice: "20241800", check_number: "1757", amount: 150.00 }
 
-  - date: 2024-02-26
-    checks:
-      - { name: Jerry & Robin Richardson, invoice: "20243300", check: "2533", amount: 150.00 }
+- id: dep:2023-003
+  checks:
+  - { check_date:  2023-12-28, name: Ed & Sally Sutton, invoice: "20241200", check_number: "8119", amount: 150.00 }
+  - { name: Brenda Caverly, invoice: "20242300", check_number: "655275", amount: 150.00 }
 
-  - date: 2024-02-20
-    checks:
-      - { name: Michael Turnage & Susan Bowyer, invoice: "20242900", check: "3273", amount: 150.00 }
+- id: dep:2024-001
+  checks:
+  - { check_date:  2024-01-10, name: David Donlon & Julia Thorp, invoice: "20241400", check_number: "2291", amount: 150.00 }
 
-  - date: 2024-02-12
-    checks:
-      - { name: Jennifer Chester, invoice: "20242200", check: "1687", amount: 150.00 }
+- id: dep:2024-002
+  checks:
+  - { check_date:  2024-01-22, name: Angela Ray & Cheryl Currie, invoice: "20240900", check_number: "103", amount: 150.00 }
 
-  - date: 2024-02-12
-    checks:
-      - { name: Benjamin N. Collins, invoice: "20241100", check: "1334", amount: 150.00 }
+- id: dep:2024-003
+  checks:
+  - { check_date:  2024-01-22, name: Clayton & Susan Rodgers, invoice: "20241500", check_number: "4139", amount: 150.00 }
 
-  - date: 2024-02-12
-    checks:
-      - { name: John Brading, invoice: "20240600", check: "2945", amount: 150.00 }
+- id: dep:2024-004
+  checks:
+  - { check_date:  2024-01-22, name: Scotty Young & Diane Swan, invoice: "20244500", check_number: "3289", amount: 150.00 }
 
-  - date: 2024-02-08
-    checks:
-      - { name: Paul Stratton, invoice: "20242700", check: "4641", amount: 150.00 }
+- id: dep:2024-005
+  checks:
+  - { check_date:  2024-02-05, name: Sultan & Elaine Jabbour, invoice: "20243500", check_number: "3426", amount: 150.00 }
 
-  - date: 2024-02-08
-    checks:
-      - { name: Harold Vogel, invoice: "20242500", check: "cash", amount: 150.00 }
+- id: dep:2024-006
+  checks:
+  - { check_date:  2024-02-08, name: Harold Vogel, invoice: "20242500", check_number: "cash", amount: 150.00 }
 
-  - date: 2024-02-05
-    checks:
-      - { name: Sultan & Elaine Jabbour, invoice: "20243500", check: "3426", amount: 150.00 }
+- id: dep:2024-007
+  checks:
+  - { check_date:  2024-02-08, name: Paul Stratton, invoice: "20242700", check_number: "4641", amount: 150.00 }
 
-  - date: 2024-01-22
-    checks:
-      - { name: Clayton & Susan Rodgers, invoice: "20241500", check: "4139", amount: 150.00 }
+- id: dep:2024-008
+  checks:
+  - { check_date:  2024-02-12, name: Benjamin N. Collins, invoice: "20241100", check_number: "1334", amount: 150.00 }
 
-  - date: 2024-01-22
-    checks:
-      - { name: Scotty Young & Diane Swan, invoice: "20244500", check: "3289", amount: 150.00 }
+- id: dep:2024-009
+  checks:
+  - { check_date:  2024-02-12, name: Jennifer Chester, invoice: "20242200", check_number: "1687", amount: 150.00 }
 
-  - date: 2024-01-22
-    checks:
-      - { name: Angela Ray & Cheryl Currie, invoice: "20240900", check: "103", amount: 150.00 }
+- id: dep:2024-010
+  checks:
+  - { check_date:  2024-02-12, name: John Brading, invoice: "20240600", check_number: "2945", amount: 150.00 }
 
-  - date: 2024-01-10
-    checks:
-      - { name: David Donlon & Julia Thorp, invoice: "20241400", check: "2291", amount: 150.00 }
+- id: dep:2024-011
+  checks:
+  - { check_date:  2024-02-20, name: Michael Turnage & Susan Bowyer, invoice: "20242900", check_number: "3273", amount: 150.00 }
 
-  - date: 2023-12-28
-    checks:
-      - { name: Ed & Sally Sutton, invoice: "20241200", check: "8119", amount: 150.00 }
-      - { name: Brenda Caverly, invoice: "20242300", check: "655275", amount: 150.00 }
+- id: dep:2024-012
+  checks:
+  - { check_date:  2024-02-26, name: Cynthia Williams, invoice: "20240700", check_number: "792", amount: 150.00 }
 
-  - date: 2023-12-28
-    checks:
-      - { name: Randy & Lynn Stephenson, invoice: "20241000", check: "8890", amount: 150.00 }
-      - { name: Jason & Kim Stewart, invoice: "20241800", check: "1757", amount: 150.00 }
+- id: dep:2024-013
+  checks:
+  - { check_date:  2024-02-26, name: Jerry & Robin Richardson, invoice: "20243300", check_number: "2533", amount: 150.00 }
 
-  - date: 2023-12-26
-    checks:
-      - { name: Karen Ladd, invoice: "20244000", check: "1425", amount: 150.00 }
-      - { name: Alan McGinigle & Beth Pekarek, invoice: "20244300", check: "9337", amount: 150.00 }
-      - { name: Judi & Ed Helsing, invoice: "20242800", check: "9084", amount: 150.00 }
-      - { name: Richard Billings & Joan Cahill, invoice: "20241600", check: "994", amount: 150.00 }
-      - { name: Nathalie Worthington, invoice: "20242000", check: "403", amount: 150.00 }
-      - { name: Dennis & Dawn Streets, invoice: "20244700", check: "5330", amount: 150.00 }
-      - { name: Harry & Amy Bulbrook, invoice: "20243200", check: "616974", amount: 150.00 }
+- id: dep:2024-014
+  checks:
+  - { check_date:  2024-02-29, name: Charles (Chuck) & Heather Holly, invoice: "20243700", check_number: "9106", amount: 150.00 }

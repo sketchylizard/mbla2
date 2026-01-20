@@ -93,13 +93,6 @@ def journal_entry_from_event(
     event: Transaction,
     directory: MemberDirectory,
 ) -> JournalEntry:
-    lot = directory.find_lot_by_name(event.description)
-
-
-def journal_entry_from_event(
-    event: Transaction,
-    directory: MemberDirectory,
-) -> JournalEntry:
 
     # If we have an annotation with get_postings method, use it
     if event.annotation and hasattr(event.annotation, "get_postings"):

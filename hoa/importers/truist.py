@@ -321,6 +321,64 @@ def save_yaml(path: Path, data: Any) -> None:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
 
+def normalize_references(
+    events: List[Transaction], counter_file: Path
+) -> List[Transaction]:
+    """Ensure that deposits and electronic checks have unique references."""
+
+    counters = load_yaml(counter_file) if counter_file.exists() else {}
+
+    events.sort(key=lambda e: (e.posted_date, e.source.line if e.source else 0))
+
+    annotated_events = []
+    for event in events:
+        if event.type == TxType.deposit:
+            year = event.posted_date.year
+            count = counters.get(year, 0) + 1
+            counters[year] = count
+            event = replace(event, reference=f"dep:{year}-{count:03d}")
+        elif event.reference is not None and event.reference.startswith("975"):
+            # Electronic checks and ACH transfers from the HOA's bank account are assigned a reference number
+            # starting with 975. This number seems to be unique within a year, but we want it to be unique across
+            # all years. So we prefix it with the year.
+            year = event.posted_date.year
+            event = replace(event, reference=f"chk:{year}-{event.reference[3:]}")
+
+        annotated_events.append(event)
+
+    save_yaml(counter_file, counters)
+    return annotated_events
+
+
+def apply_annotations(
+    events: List[Transaction], annotation_root: Path
+) -> List[Transaction]:
+    """Apply annotations to the given events, returning a new list of events with annotations applied."""
+    annotations = Annotation.load_all(annotation_root)
+
+    annotations.sort(key=lambda a: a.reference)
+
+    events.sort(key=lambda e: (e.reference or "~~~~~~~~~~"))
+
+    for annotation in annotations:
+        found = False
+        for txn_index, event in enumerate(events):
+            if annotation.matches(event):
+                events[txn_index] = annotation.apply(event)
+                # annotation should only match one transaction
+                found = True
+                break
+
+        if not found:
+            # If we didn't find a match, we can log a warning or raise an error
+            print(
+                f"Warning: No match found for annotation {annotation.reference} in events",
+                file=sys.stderr,
+            )
+
+    return events
+
+
 def process(truist_root: Path) -> List[Transaction]:
     # Stage 1: Extract raw transactions from CSV
     events: List[Transaction] = []
@@ -329,25 +387,14 @@ def process(truist_root: Path) -> List[Transaction]:
     if not statements_path.is_dir():
         raise FileNotFoundError(f"Expected directory: {statements_path}")
 
-    counter_file = truist_root / "deposit_counter.yaml"
-    counters = load_yaml(counter_file) if counter_file.exists() else {}
-
     for path in sorted(statements_path.glob("*.csv")):
         file_events = extract_events(path)
+        events.extend(file_events)
 
-        for event in file_events:
-            if event.type != TxType.deposit:
-                events.append(event)
-            else:
-                year = event.posted_date.year
-                count = counters.get(year, 0) + 1
-                events.append(replace(event, reference=f"{year}-{count:03d}"))
-                counters[year] = count
+    events = normalize_references(events, truist_root / "deposit_counter.yaml")
 
-    save_yaml(counter_file, counters)
-
-    # Stage 2: Load all annotations (both rules and deposits)
-    #    rules, deposits = load_annotations(truist_root / "annotations")
+    # Stage 2: Load all annotations
+    events = apply_annotations(events, truist_root / "annotations")
 
     # Stage 3: Apply categorization rules
     #    events = apply_categorization_rules(events, rules)

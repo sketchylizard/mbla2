@@ -1,20 +1,20 @@
 rules:
-  - reference: 975005
+  - reference: chk:2025-005
     description: Smart Tree Service
     memo: Tree removal, XH05K-6F87W
     account: expenses:other
 
-  - reference: 975011
+  - reference: chk:2025-011
     description: Jay Sloan & Trish Welsh
     memo: Life preserver for pond
     account: expenses:pond
 
-  - reference: 975012
+  - reference: chk:2025-012
     description: Bagwell Holt Smith P.A.
     memo: Consultation on bylaw changes
     account: expenses:legal
 
-  - reference: 975013
+  - reference: chk:2025-013
     description: Bagwell Holt Smith P.A.
     memo: Consultation on bylaw changes
     account: expenses:legal

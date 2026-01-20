@@ -1,6 +1,6 @@
 rules:
   - pattern: Check #\\d+
-    reference: 975007
+    reference: chk:2024-007
     amount: 600.00
     description: Tyndell Lawn & Tree Service
     memo: Emergency tree removal--split cost
@@ -20,12 +20,12 @@ rules:
     memo: Dock repair
     account: expenses:pond
 
-  - reference: 975001
+  - reference: chk:2024-001
     description: Carolina Dock & Marine Construction
     memo: Structural assesment of dock
     account: expenses:pond
 
-  - reference: 975002
+  - reference: chk:2024-002
     description: Bagwell Holt Smith P.A.
     memo: Consultation on covenant enforcement
     account: expenses:legal

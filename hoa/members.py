@@ -76,7 +76,11 @@ class MemberDirectory:
             find_lot_by_name("Brading") -> 6 (partial match)
             find_lot_by_name("John R Brading", exact=True) -> 6
         """
-        name_lower = name.lower()
+
+        name_lower = name.lower().strip()
+
+        if not name_lower:
+            return None
 
         for lot_num, lot in self.lots.items():
             if lot.hoa_owned:
