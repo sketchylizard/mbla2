@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import List, DefaultDict, Dict, Tuple
+from typing import List, DefaultDict, Tuple
 import csv
 import re
 import sys
@@ -14,12 +15,19 @@ import yaml
 from hoa import accounts
 from hoa import config
 from hoa.annotation import Annotation
-from hoa.members import MemberDirectory, Lot
 from hoa.models import Invoice, merge_transfers, Transaction, Source, TxType
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+class Counter:
+    def __init__(self):
+        self.values = defaultdict(int)
+
+    def increment(self, year: int) -> str:
+        self.values[year] += 1
+        return f"{year}-{self.values[year]:02d}"
 
 
 def parse_amount(value: str) -> Decimal:
@@ -56,6 +64,7 @@ def transaction_from_csv_row(
     account: str,
     path: Path,
     line_no: int,
+    deposit_counter: Counter,
 ) -> Transaction:
     """
     Create a Transaction from a CSV row.
@@ -189,6 +198,9 @@ def transaction_from_csv_row(
         "counter deposit",
     ):
         assert reference is None, f"Expected no reference for deposit: {description}"
+        year = posted_date.year
+        count = deposit_counter.increment(year)
+        reference = f"dep-{count}"
         type = TxType.deposit
     else:
         type = TxType.credit
@@ -215,9 +227,7 @@ Key = Tuple[str, date]
 
 
 def extract_one_account(
-    f: __file__,
-    path: Path,
-    line_no: int,
+    f: __file__, path: Path, line_no: int, deposit_counter: Counter
 ) -> Tuple[str, List[Transaction], int] | None:
     # An account section starts with the account name, followed by a CSV header, then the transactions.
     events: List[Transaction] = []
@@ -248,14 +258,14 @@ def extract_one_account(
             break
 
         row = csv.DictReader([line], fieldnames=headers).__next__()
-        event = transaction_from_csv_row(row, account, path, line_no)
+        event = transaction_from_csv_row(row, account, path, line_no, deposit_counter)
 
         events.append(event)
 
     return (account, events, line_no)
 
 
-def extract_events(path: Path) -> List[Transaction]:
+def extract_events(path: Path, deposit_counter: Counter) -> List[Transaction]:
     events: List[Transaction] = []
 
     with path.open(encoding="utf-8-sig") as f:
@@ -265,7 +275,7 @@ def extract_events(path: Path) -> List[Transaction]:
         line_no = 0
 
         while f:
-            results = extract_one_account(f, path, line_no)
+            results = extract_one_account(f, path, line_no, deposit_counter)
             if results is None:
                 # EOF reached
                 break
@@ -308,22 +318,33 @@ def process(truist_root: Path) -> List[Transaction]:
     # Stage 1: Extract raw transactions from CSV
     events: List[Transaction] = []
 
+    deposit_counter = Counter()
+
+    counter_file = truist_root / "counters.yaml"
+    if counter_file.is_file():
+        with open(truist_root / "counters.yaml") as f:
+            data = yaml.safe_load(f) or {}
+            deposit_counter.values = defaultdict(int, data.get("deposit_counter", {}))
+
     statements_path = truist_root / "statements"
     if not statements_path.is_dir():
         raise FileNotFoundError(f"Expected directory: {statements_path}")
 
     for path in sorted(statements_path.glob("*.csv")):
-        file_events = extract_events(path)
+        file_events = extract_events(path, deposit_counter)
         events.extend(file_events)
 
     # Stage 2: Load all annotations
-    # events = apply_annotations(events, truist_root / "annotations")
+    events = apply_annotations(events, truist_root / "annotations")
 
     # Stage 3: Apply categorization rules
     #    events = apply_categorization_rules(events, rules)
 
     # Stage 4: Apply deposit annotations
     #    events = apply_deposit_annotations(events, deposits)
+
+    with open(counter_file, "w") as f:
+        yaml.safe_dump({"deposit_counter": dict(deposit_counter.values)}, f)
 
     return events
 

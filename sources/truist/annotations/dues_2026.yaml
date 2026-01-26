@@ -1,44 +1,44 @@
 deposits:
-- id: truist-checking:dep:2025-015
+- id: dep-2025-15
   checks:
   - { check_date: 2025-11-19, check_number: 483, name: Nathalie Worthington, amount: 200.00, invoice: 20262000}
 
-- id: truist-checking:dep:2025-016
+- id: dep-2025-16
   checks:
   - { check_date: 2025-12-26, check_number: 9722, name: Elizabeth Pekarek, amount: 200.00, invoice: 20264300}
 
-- id: truist-checking:dep:2025-017
+- id: dep-2025-17
   checks:
   - { check_date: 2025-12-12, check_number: 61693, name: Roger Efrid, amount: 150.00, invoice: 20263000}
 
-- id: truist-checking:dep:2025-018
+- id: dep-2025-18
   checks:
   - { check_date: 2025-12-28, check_number: 3022, name: John Brading, amount: 150.00, invoice: 20260600}
 
-- id: truist-checking:dep:2026-001
+- id: dep-2026-01
   checks:
   - { check_date: 2025-12-27, check_number: 2143, name: Sally Sutton, amount: 200.00, invoice: 20261200}
 
-- id: truist-checking:dep:2026-002
+- id: dep-2026-02
   checks:
   - { check_date: 2025-12-29, check_number: 1616, name: Karen Ladd, amount: 200.00, invoice: 20264000}
 
-- id: truist-checking:dep:2026-003
+- id: dep-2026-03
   checks:
   - { check_date: 2025-12-31, check_number: 3502, name: Scotty Young, amount: 200.00, invoice: 20264500}
 
-- id: truist-checking:dep:2026-004
+- id: dep-2026-04
   checks:
   - { check_date: 2026-01-03, check_number: 830, name: Cynthia Williams, amount: 200.00, invoice: 20260700}
 
-- id: truist-checking:dep:2026-005
+- id: dep-2026-05
   checks:
   - { check_date: 2025-12-28, check_number: 8976, name: Lynn Stephenson, amount: 150.00, invoice: 20261000}
 
-- id: truist-checking:dep:2026-006
+- id: dep-2026-06
   checks:
   - { check_date: 2025-12-28, check_number: 3460, name: Elaine Jabbour, amount: 150.00, invoice: 20263500}
 
-- id: truist-checking:dep:2026-007
+- id: dep-2026-07
   checks:
   - { check_date: 2025-12-31, check_number: 679136, name: Brenda Caverly, amount: 150.00, invoice: 20262300}
