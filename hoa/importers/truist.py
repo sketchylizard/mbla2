@@ -14,7 +14,6 @@ import yaml
 from hoa import accounts
 from hoa import config
 from hoa.annotation import Annotation
-from hoa.counters import CounterManager
 from hoa.members import MemberDirectory, Lot
 from hoa.models import Invoice, merge_transfers, Transaction, Source, TxType
 
@@ -57,7 +56,6 @@ def transaction_from_csv_row(
     account: str,
     path: Path,
     line_no: int,
-    counters: CounterManager,
 ) -> Transaction:
     """
     Create a Transaction from a CSV row.
@@ -80,7 +78,7 @@ def transaction_from_csv_row(
     match = re.match("Payment venmo", description)
     if match:
         assert amount < 0, f"Expected negative amount for {description}"
-        return counters.make_transaction(
+        return Transaction(
             posted_date=posted_date,
             amount=abs(amount),
             type=TxType.transfer,
@@ -101,7 +99,7 @@ def transaction_from_csv_row(
         if direction == "from":
             assert amount > 0, f"Expected positive amount for {description}"
 
-            return counters.make_transaction(
+            return Transaction(
                 posted_date=posted_date,
                 amount=amount,
                 type=TxType.transfer,
@@ -116,7 +114,7 @@ def transaction_from_csv_row(
 
         if direction == "to":
             assert amount < 0, f"Expected negative amount for {description}"
-            return counters.make_transaction(
+            return Transaction(
                 posted_date=posted_date,
                 amount=abs(amount),
                 type=TxType.transfer,
@@ -131,7 +129,7 @@ def transaction_from_csv_row(
 
     match = re.match(r"Cashout venmo (\d+)", description)
     if match:
-        return counters.make_transaction(
+        return Transaction(
             posted_date=posted_date,
             amount=amount,
             type=TxType.transfer,
@@ -146,7 +144,7 @@ def transaction_from_csv_row(
 
     match = re.match(r"Addfunds venmo", description, re.IGNORECASE)
     if match:
-        return counters.make_transaction(
+        return Transaction(
             posted_date=posted_date,
             amount=abs(amount),  # Make positive
             type=TxType.transfer,
@@ -169,7 +167,7 @@ def transaction_from_csv_row(
         else:
             type = TxType.debit
 
-        return counters.make_transaction(
+        return Transaction(
             posted_date=posted_date,
             amount=abs(amount),
             type=type,
@@ -195,7 +193,7 @@ def transaction_from_csv_row(
     else:
         type = TxType.credit
 
-    return counters.make_transaction(
+    return Transaction(
         posted_date=posted_date,
         amount=amount,
         type=type,
@@ -220,7 +218,6 @@ def extract_one_account(
     f: __file__,
     path: Path,
     line_no: int,
-    counters: CounterManager,
 ) -> Tuple[str, List[Transaction], int] | None:
     # An account section starts with the account name, followed by a CSV header, then the transactions.
     events: List[Transaction] = []
@@ -251,17 +248,14 @@ def extract_one_account(
             break
 
         row = csv.DictReader([line], fieldnames=headers).__next__()
-        event = transaction_from_csv_row(row, account, path, line_no, counters)
+        event = transaction_from_csv_row(row, account, path, line_no)
 
         events.append(event)
 
     return (account, events, line_no)
 
 
-def extract_events(
-    path: Path,
-    counters: CounterManager,
-) -> List[Transaction]:
+def extract_events(path: Path) -> List[Transaction]:
     events: List[Transaction] = []
 
     with path.open(encoding="utf-8-sig") as f:
@@ -271,7 +265,7 @@ def extract_events(
         line_no = 0
 
         while f:
-            results = extract_one_account(f, path, line_no, counters)
+            results = extract_one_account(f, path, line_no)
             if results is None:
                 # EOF reached
                 break
@@ -314,14 +308,12 @@ def process(truist_root: Path) -> List[Transaction]:
     # Stage 1: Extract raw transactions from CSV
     events: List[Transaction] = []
 
-    counters = CounterManager(truist_root / "counters.json")
-
     statements_path = truist_root / "statements"
     if not statements_path.is_dir():
         raise FileNotFoundError(f"Expected directory: {statements_path}")
 
     for path in sorted(statements_path.glob("*.csv")):
-        file_events = extract_events(path, counters)
+        file_events = extract_events(path)
         events.extend(file_events)
 
     # Stage 2: Load all annotations
@@ -332,8 +324,6 @@ def process(truist_root: Path) -> List[Transaction]:
 
     # Stage 4: Apply deposit annotations
     #    events = apply_deposit_annotations(events, deposits)
-
-    counters.save()
 
     return events
 

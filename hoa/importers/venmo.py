@@ -13,7 +13,6 @@ import sys
 from hoa.models import Source, Transaction, TxType
 from hoa import accounts
 from hoa import config
-from hoa.counters import CounterManager
 
 # ----------------------------
 # helpers
@@ -160,10 +159,7 @@ class UnknownVenmoType(Exception):
         self.venmo_type = venmo_type
 
 
-def extract_events(
-    path: Path,
-    counters: CounterManager,
-) -> List[Transaction]:
+def extract_events(path: Path) -> List[Transaction]:
     events: List[Transaction] = []
 
     with path.open(newline="", encoding="utf-8-sig") as f:
@@ -205,7 +201,7 @@ def extract_events(
                 note = note.replace("\n", " | ")
 
                 events.append(
-                    counters.make_transaction(
+                    Transaction(
                         posted_date=posted_date,
                         amount=abs(ctx.amount),
                         bank="venmo",
@@ -228,14 +224,11 @@ def extract_events(
 def process(venmo_root: Path) -> List[Transaction]:
     events: List[Transaction] = []
 
-    counters = CounterManager(venmo_root / "counters.json")
-
     statements_path = venmo_root / "statements"
     files = sorted(statements_path.glob("*.csv"))
     for path in files:
-        events.extend(extract_events(path, counters))
+        events.extend(extract_events(path))
 
-    counters.save()
     return events
 
 
