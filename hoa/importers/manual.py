@@ -9,7 +9,7 @@ from typing import List, DefaultDict, Tuple
 import yaml
 import sys
 
-from hoa.models import Transaction, Source
+from hoa.models import Transaction, Source, TxType
 from hoa import accounts, config
 
 
@@ -23,15 +23,15 @@ def extract_events(path: Path) -> List[Transaction]:
     account = yaml_data.get("account", "equity:opening_balances")
 
     for entry in yaml_data.get("balances", []):
-        event_id = f"journal:{entry.get('account')}:{opening_date}"
         credit = Decimal(str(entry.get("credit", "0")))
         debit = Decimal(str(entry.get("debit", "0")))
         amount = credit - debit
         event = Transaction(
-            event_id=event_id,
             posted_date=opening_date,
             description=description,
             amount=amount,
+            bank="manual",
+            type=TxType.manual,
             from_account=entry["account"],
             to_account=account,
             source=Source(file=str(path), line=0),

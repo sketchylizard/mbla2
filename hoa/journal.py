@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass, replace
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import List, Tuple, Set
@@ -17,12 +17,46 @@ from hoa import config
 class JournalEntry:
     posted_date: date
     description: str
+    type: TxType
     memo: str | None
     reference: str | None
     amount: Decimal
     source: Source
     postings: list[Posting]
     transfer_source: Source | None = None
+
+    @property
+    def is_transfer(self) -> bool:
+        """Check if this is a transfer between accounts"""
+        # Simple check: 2 postings, both in assets, opposite signs
+        if len(self.postings) != 2:
+            return False
+
+        p1, p2 = self.postings
+        return (
+            p1.account.startswith("assets:")
+            and p2.account.startswith("assets:")
+            and p1.amount == -p2.amount
+        )
+
+    def validate(self: JournalEntry) -> None:
+        posting_accounts = []
+
+        total: Decimal = 0
+        for p in self.postings:
+            posting_accounts.append(p.account)
+            if p.amount == 0:
+                raise ValueError(
+                    f"Zero-amount posting in account '{p.account}' "
+                    f"for entry '{self.description}'"
+                )
+            total += p.amount
+
+        if total != Decimal(0):
+            raise ValueError(
+                f"JournalEntry postings do not balance to zero: {total} "
+                f"for entry '{self.description}' on {self.posted_date}"
+            )
 
 
 class Journal:
@@ -31,6 +65,7 @@ class Journal:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(self.db_path, autocommit=False)
         self.conn.row_factory = sqlite3.Row
+
         self._initialize_tables()
 
     def _initialize_tables(self) -> None:
@@ -41,6 +76,7 @@ class Journal:
                 journal_id      INTEGER PRIMARY KEY AUTOINCREMENT,
                 posted_date     TEXT NOT NULL,        -- ISO date
                 description     TEXT NOT NULL,
+                type            TEXT NOT NULL,         -- see TxType
                 amount          INTEGER NOT NULL,     -- stored as cents
                 memo            TEXT,
                 reference       TEXT -- check # or other reference number
@@ -118,63 +154,31 @@ class Journal:
             ),
         )
 
-    def _validate_entry(self, entry: JournalEntry) -> None:
-        posting_accounts = []
-
-        total: Decimal = 0
-        for p in entry.postings:
-            posting_accounts.append(p.account)
-            if p.amount == 0:
-                raise ValueError(
-                    f"Zero-amount posting in account '{p.account}' "
-                    f"for entry '{entry.description}'"
-                )
-            total += p.amount
-
-        if total != Decimal(0):
-            raise ValueError(
-                f"JournalEntry postings do not balance to zero: {total} "
-                f"for entry '{entry.description}' on {entry.posted_date}"
-            )
-
     def add_entry(self, entry: JournalEntry) -> int | None:
-        """
-        Inserts a journal entry into the database.
-
-        Parameters
-        ----------
-        entry : JournalEntry
-            The in-memory semantic entry.
-        source : Source
-            Information about the origin (filename, line number, etc.)
-        source_hash : str
-            Computed hash for uniqueness.
-
-        Returns
-        -------
-        int | None
-            journal_id if inserted successfully,
-            None if the source_hash already exists.
-        """
         try:
-            self._validate_entry(entry)
+            entry.validate()
 
             cursor = self.conn.cursor()
             cursor.execute(
                 """
-            INSERT INTO journal_entry
-            (posted_date, description, amount, memo, reference)
-            VALUES (?, ?, ?, ?, ?)
-            """,
+                INSERT INTO journal_entry
+                (posted_date, description, type, amount, memo, reference)
+                VALUES (?, ?, ?, ?, ?, ?)
+                RETURNING journal_id
+                """,
                 (
                     entry.posted_date,
                     entry.description,
+                    entry.type,
                     int(entry.amount * 100),  # store as integer cents
                     entry.memo,
                     entry.reference,
                 ),
             )
-            journal_id = cursor.lastrowid
+
+            row = cursor.fetchone()
+
+            journal_id = row[0]
 
             for posting in entry.postings:
                 self._add_posting(journal_id, posting)
@@ -185,9 +189,8 @@ class Journal:
 
             self.conn.commit()
             return journal_id
-        except sqlite3.IntegrityError as e:
-            # Duplicate source_hash
 
+        except sqlite3.IntegrityError as e:
             print(f"IntegrityError: {e}")
             return None
 

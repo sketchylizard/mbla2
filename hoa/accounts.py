@@ -14,7 +14,7 @@ ACCOUNT_NORMALIZATION = [
     (re.compile(r"ONLINE FROM \**9625"), "assets:truist:savings"),
     (re.compile(r"9625"), "assets:truist:savings"),
     # Coastal FCU
-    (re.compile(r"COASTAL FEDERAL CREDIT UNION \*9027"), "assets:coastal:external"),
+    (re.compile(r"COASTAL FEDERAL CREDIT UNION (.*)\*9027"), "assets:coastal:external"),
     # Debit card
     (re.compile(r"Visa \*0670"), "assets:coastal:external"),
 ]

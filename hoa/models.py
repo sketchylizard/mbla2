@@ -7,11 +7,12 @@ from decimal import Decimal
 from decimal import Decimal
 from enum import Enum
 from hashlib import sha256
-from hoa import config
 from pathlib import Path
 from typing import Callable, List, Protocol
 from typing import Optional, Iterable, TextIO, Dict, Any, Self
 import json
+
+from hoa import config
 
 
 @dataclass(frozen=True)
@@ -110,19 +111,39 @@ class Annotation(Protocol):
         ...
 
 
+class TxType(str, Enum):
+    check = "check"
+    credit = "credit"
+    debit = "debit"
+    deposit = "deposit"
+    fee = "fee"
+    manual = "manual"
+    transfer = "transfer"
+
+    @classmethod
+    def from_str(cls, raw: str) -> "TxType":
+        """
+        Parse the CSV type string and return a TxType enum.
+        Converts to uppercase to match the Enum values.
+        """
+        try:
+            return cls(raw.strip().lower())
+        except ValueError:
+            raise ValueError(f"Unknown transaction type: {raw}")
+
+
 @dataclass(frozen=True)
 class Transaction:
-    # Identity / ordering
-    event_id: str
     posted_date: date
     amount: Decimal
     # Source provenance
     source: Source
+    bank: str
 
     # Accounts (may be inferred later)
     from_account: str | None = None
     to_account: str | None = None
-    type: str | None = None  # "debit", "credit", "transfer".
+    type: TxType | None = None  # "debit", "credit", "transfer".
     reference: str | None = None  # Venmo ID, check number, ref #
     postings: List[Posting] | None = None
 
@@ -152,11 +173,35 @@ class Transaction:
             self.type,
             _normalize(self.description),
             str(self.amount),
-            str(self.event_id),
         ]
 
         data = "\x1f".join(parts)
         return sha256(data.encode("utf-8")).hexdigest()
+
+    def can_merge(self, other: Transaction, date_tolerance_days: int = 0):
+        """
+        Check if two transfers should be merged.
+
+        date_tolerance_days=0 for exact date match (intra-bank transfers)
+        date_tolerance_days=5 for inter-bank transfers (Venmo ↔ Truist)
+        """
+        # Quick checks first
+        if (
+            self.transfer_source is not None
+            or self.type != TxType.transfer
+            or other.type != TxType.transfer
+            or self.amount != other.amount
+            or self.from_account != other.from_account
+            or self.to_account != other.to_account
+        ):
+            return False
+
+        # Only calculate date difference if everything else matches
+        if date_tolerance_days == 0:
+            return self.posted_date == other.posted_date
+        else:
+            date_diff = abs((self.posted_date - other.posted_date).days)
+            return date_diff <= date_tolerance_days
 
     # ---- NDJSON I/O ----
 
@@ -181,7 +226,6 @@ class Transaction:
         )
 
         return cls(
-            event_id=data["event_id"],
             posted_date=date.fromisoformat(data["posted_date"]),
             amount=Decimal(data["amount"]),
             type=data.get("type"),
@@ -224,24 +268,66 @@ class Transaction:
             stream.write("\n")
 
 
-class TxType(str, Enum):
-    fee = "fee"
-    deposit = "deposit"
-    credit = "credit"
-    check = "check"
-    debit = "debit"
-    transfer = "transfer"
+def merge_transfers(
+    events_a: List[Transaction],
+    events_b: List[Transaction],
+    date_tolerance_days: int = 0,
+) -> List[Transaction]:
+    output = []
 
-    @classmethod
-    def from_str(cls, raw: str) -> "TxType":
-        """
-        Parse the CSV type string and return a TxType enum.
-        Converts to uppercase to match the Enum values.
-        """
-        try:
-            return cls(raw.strip().lower())
-        except ValueError:
-            raise ValueError(f"Unknown transaction type: {raw}")
+    # Sort both lists by posted_date and amount (in descending order)
+    events_a = sorted(events_a, key=lambda e: (e.posted_date, e.amount))
+    events_b = sorted(events_b, key=lambda e: (e.posted_date, e.amount))
+
+    i = j = 0
+    a_len = len(events_a)
+    b_len = len(events_b)
+
+    while i < a_len and j < b_len:
+        # Drain non-transfers from A
+        while i < a_len and (
+            events_a[i].type != TxType.transfer
+            or events_a[i].transfer_source is not None
+        ):
+            output.append(events_a[i])
+            i += 1
+
+        # Drain non-transfers from B
+        while j < b_len and (
+            events_b[j].type != TxType.transfer
+            or events_b[j].transfer_source is not None
+        ):
+            output.append(events_b[j])
+            j += 1
+
+        if i >= a_len or j >= b_len:
+            break
+
+        a = events_a[i]
+        b = events_b[j]
+
+        assert a.type == TxType.transfer
+        assert b.type == TxType.transfer
+
+        if a.can_merge(b, date_tolerance_days):
+            print(
+                f"Merging transfer: {a.from_account}, {a.to_account}, {a.amount}, a: {a.posted_date}, b: {b.posted_date}"
+            )
+            output.append(a.with_transfer_source(b.source))
+        else:
+            print(
+                f"Unmatched transfer events: a: {a.posted_date}-{a.amount}, b: {b.posted_date}-{b.amount}"
+            )
+            output.append(a)
+            output.append(b)
+        i += 1
+        j += 1
+
+    # Append leftovers
+    output.extend(events_a[i:])
+    output.extend(events_b[j:])
+
+    return output
 
 
 class BankAccount(str, Enum):

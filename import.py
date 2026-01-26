@@ -14,7 +14,7 @@ import os
 
 from hoa import config
 from hoa.journal import Journal, Posting, JournalEntry
-from hoa.models import Transaction, Source
+from hoa.models import merge_transfers, Source, Transaction, TxType
 from hoa.members import MemberDirectory, Lot
 
 
@@ -64,7 +64,7 @@ def is_applicable(event: Transaction) -> bool:
     if event.to_account and event.to_account.startswith("assets:truist"):
         return True
 
-    if event.event_id.startswith("venmo"):
+    if event.bank == "venmo":
         # check for keywords
         keywords = [
             "mbla",
@@ -111,6 +111,7 @@ def journal_entry_from_event(
             posted_date=event.posted_date,
             amount=event.amount,
             description=event.description,
+            type=event.type,
             memo=event.memo,
             postings=[bank_posting, *contra_postings],
             reference=event.reference,
@@ -126,13 +127,10 @@ def journal_entry_from_event(
     memo = event.memo
 
     if lot:
-        lot_str = ", ".join(str(l) for l in lot)
-        memo = f"{memo or ''} [Lot(s): {lot_str}]".strip()
-
         if from_account is None:
-            from_account = f"assets:receivables:lot{lot[0]}"
+            from_account = f"assets:receivables:lot{lot.lot_number}"
         elif to_account is None:
-            to_account = f"assets:payables:lot{lot[0]}"
+            to_account = f"assets:payables:lot{lot.lot_number}"
 
     assert (
         from_account is not None or to_account is not None
@@ -154,8 +152,7 @@ def journal_entry_from_event(
     if from_account is None or to_account is None:
         print(event)
         raise ValueError(
-            f"Cannot journalize event {event.event_id}: "
-            f"from={from_account}, to={to_account}"
+            f"Cannot journalize event: " f"from={from_account}, to={to_account}"
         )
 
     postings = (
@@ -167,6 +164,7 @@ def journal_entry_from_event(
         posted_date=event.posted_date,
         amount=event.amount,
         description=event.description or "",
+        type=event.type,
         memo=memo,
         postings=postings,
         reference=event.reference,
@@ -191,8 +189,18 @@ def create_journal_entries(
     print("\nSkipped events:")
     for event in skipped:
         print(
-            f"  - {event.event_id}: {event.description}, {event.memo}, ({event.amount}), from: {event.from_account}, to: {event.to_account}    "
+            f"  - {event.description}, {event.memo}, ({event.amount}), from: {event.from_account}, to: {event.to_account}    "
         )
+
+
+def filter_out_external_accounts(events: List[Transaction]) -> List[Transaction]:
+    filtered = []
+    for event in events:
+        # Skip if from_account or to_account contains "external:"
+        if not is_applicable(event):
+            continue
+        filtered.append(event)
+    return filtered
 
 
 def main():
@@ -217,19 +225,28 @@ def main():
 
         importer_name = dir.name  # 'truist', 'venmo', 'journals'
 
+        # if importer_name == "venmo":
+        #     continue
+
         # Dynamically import the processor
         try:
             importer = __import__(
                 f"hoa.importers.{importer_name}", fromlist=["process"]
             )
             transactions = importer.process(dir)
-            create_journal_entries(journal, directory, transactions)
+
             print(f"Processed {len(transactions)} from {importer_name}")
 
-            all_transactions.extend(transactions)
+            # Filter out external accounts
+            transactions = filter_out_external_accounts(transactions)
+
+            # Match transfer transactions
+            all_transactions = merge_transfers(all_transactions, transactions, 5)
 
         except ModuleNotFoundError:
             print(f"Warning: No importer found for {importer_name}")
+
+    create_journal_entries(journal, directory, all_transactions)
 
     print_summary(journal, checking_before, savings_before)
 

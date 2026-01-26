@@ -10,9 +10,10 @@ from typing import List, Iterable, Optional
 import csv
 import sys
 
-from hoa.models import Transaction, Source
+from hoa.models import Source, Transaction, TxType
 from hoa import accounts
-
+from hoa import config
+from hoa.counters import CounterManager
 
 # ----------------------------
 # helpers
@@ -48,18 +49,18 @@ def make_event_id(
 
 
 class VenmoClass(Enum):
-    ADD_FUNDS = "add_funds"
-    TRANSFER_OUT = "transfer_out"
-    PAYMENT = "payment"
+    add_funds = "add_funds"
+    transfer = "transfer"
+    payment = "payment"
 
 
 VENMO_TYPE_MAP = {
-    "add funds": VenmoClass.ADD_FUNDS,
-    "instant add funds": VenmoClass.ADD_FUNDS,
-    "standard transfer": VenmoClass.TRANSFER_OUT,
-    "instant transfer": VenmoClass.TRANSFER_OUT,
-    "payment": VenmoClass.PAYMENT,
-    "charge": VenmoClass.PAYMENT,
+    "add funds": VenmoClass.add_funds,
+    "instant add funds": VenmoClass.add_funds,
+    "standard transfer": VenmoClass.transfer,
+    "instant transfer": VenmoClass.transfer,
+    "charge": VenmoClass.transfer,
+    "payment": VenmoClass.payment,
 }
 
 
@@ -84,20 +85,36 @@ def normalize_payment_parties(venmo_type, from_, to):
 
 def handle_add_funds(ctx: VenmoContext):
     return dict(
-        actual_type="transfer",
+        actual_type=TxType.transfer,
         from_account=accounts.normalize(ctx.funding_source),
         to_account="assets:venmo",
-        counterparty=None,
+        counterparty="Transfer to Venmo",
     )
 
 
-def handle_transfer_out(ctx: VenmoContext):
+def handle_transfer(ctx: VenmoContext):
+    dest = ctx.destination.strip()
+    if dest == "":
+        to_account = "expenses:venmo:payments"
+        description = ctx.from_
+    else:
+        to_account = accounts.normalize(dest)
+        description = f"Transfer to {dest}"
+
+    source = ctx.funding_source.strip()
+    if source == "":
+        from_account = "assets:venmo"
+    else:
+        from_account = accounts.normalize(source)
     return dict(
-        actual_type="transfer",
-        from_account="assets:venmo",
-        to_account=accounts.normalize(ctx.destination),
-        counterparty=None,
+        actual_type=TxType.transfer,
+        from_account=from_account,
+        to_account=to_account,
+        counterparty=description,
     )
+
+
+# In venmo.py, handle_payment()
 
 
 def handle_payment(ctx: VenmoContext):
@@ -116,7 +133,7 @@ def handle_payment(ctx: VenmoContext):
         assert payer == "Jason Stewart"
     else:
         # Someone paying me
-        actual_type = "credit"
+        actual_type = TxType.credit
         from_account = None
         to_account = "assets:venmo"
         counterparty = ctx.from_
@@ -131,9 +148,9 @@ def handle_payment(ctx: VenmoContext):
 
 
 VENMO_HANDLERS = {
-    VenmoClass.ADD_FUNDS: handle_add_funds,
-    VenmoClass.TRANSFER_OUT: handle_transfer_out,
-    VenmoClass.PAYMENT: handle_payment,
+    VenmoClass.add_funds: handle_add_funds,
+    VenmoClass.transfer: handle_transfer,
+    VenmoClass.payment: handle_payment,
 }
 
 
@@ -143,7 +160,10 @@ class UnknownVenmoType(Exception):
         self.venmo_type = venmo_type
 
 
-def extract_events(path: Path) -> List[Transaction]:
+def extract_events(
+    path: Path,
+    counters: CounterManager,
+) -> List[Transaction]:
     events: List[Transaction] = []
 
     with path.open(newline="", encoding="utf-8-sig") as f:
@@ -162,7 +182,6 @@ def extract_events(path: Path) -> List[Transaction]:
                 source = Source(file=str(path), line=line_no)
 
                 posted_date = datetime.fromisoformat(row["Datetime"]).date()
-                event_id = make_event_id(source, reference=tx_id)
 
                 source_type = row["Type"].strip().lower()
                 venmo_class = VENMO_TYPE_MAP.get(source_type)
@@ -170,8 +189,9 @@ def extract_events(path: Path) -> List[Transaction]:
                 if venmo_class is None:
                     raise UnknownVenmoType(source_type)
 
+                amount = parse_amount(row["Amount (total)"])
                 ctx = VenmoContext(
-                    amount=parse_amount(row["Amount (total)"]),
+                    amount=amount,
                     venmo_type=source_type,
                     from_=row.get("From", "").strip(),
                     to=row.get("To", "").strip(),
@@ -185,10 +205,10 @@ def extract_events(path: Path) -> List[Transaction]:
                 note = note.replace("\n", " | ")
 
                 events.append(
-                    Transaction(
-                        event_id=event_id,
+                    counters.make_transaction(
                         posted_date=posted_date,
                         amount=abs(ctx.amount),
+                        bank="venmo",
                         description=result["counterparty"],
                         memo=note or None,
                         from_account=result["from_account"],
@@ -208,10 +228,14 @@ def extract_events(path: Path) -> List[Transaction]:
 def process(venmo_root: Path) -> List[Transaction]:
     events: List[Transaction] = []
 
-    files = sorted(venmo_root.glob("*.csv"))
-    for path in files:
-        events.extend(extract_events(path))
+    counters = CounterManager(venmo_root / "counters.json")
 
+    statements_path = venmo_root / "statements"
+    files = sorted(statements_path.glob("*.csv"))
+    for path in files:
+        events.extend(extract_events(path, counters))
+
+    counters.save()
     return events
 
 
@@ -228,7 +252,7 @@ def main(argv: list[str]) -> int:
 
     all_events: list[Transaction] = []
 
-    all_events = process(config.SOURCES / "truist")
+    all_events = process(config.SOURCES / "venmo")
 
     Transaction.write_ndjson(all_events, sys.stdout)
     return 0

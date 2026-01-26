@@ -63,7 +63,7 @@ class MemberDirectory:
                 hoa_owned=info.get("hoa_owned", False),
             )
 
-    def find_lot_by_name(self, name: str, exact: bool = False) -> int | None:
+    def find_lot_by_name(self, name: str, exact: bool = False) -> Lot | None:
         """
         Find lot number by owner name.
 
@@ -76,6 +76,9 @@ class MemberDirectory:
             find_lot_by_name("Brading") -> 6 (partial match)
             find_lot_by_name("John R Brading", exact=True) -> 6
         """
+
+        if not name:
+            return None
 
         name_lower = name.lower().strip()
 
@@ -90,17 +93,17 @@ class MemberDirectory:
                 if exact:
                     # Check exact match against original and variations
                     if name_lower == owner.lower():
-                        return lot_num
+                        return lot
                     for variation in generate_name_variations(owner):
                         if name_lower == variation.lower():
-                            return lot_num
+                            return lot
                 else:
                     # Partial match - check if search term appears in any variation
                     if name_lower in owner.lower():
-                        return lot_num
+                        return lot
                     for variation in generate_name_variations(owner):
                         if name_lower in variation.lower():
-                            return lot_num
+                            return lot
 
         return None
 

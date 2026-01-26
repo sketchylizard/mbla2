@@ -1,72 +1,72 @@
 deposits:
-- id: dep:2024-019
+- id: truist-checking:dep:2024-019
   checks:
   - { check_date: 2024-12-04, name: Sultan & Elaine Jabbour, invoice: "20253500", check_number: "#3445", amount: "150.00" }
 
-- id: dep:2024-020
+- id: truist-checking:dep:2024-020
   checks:
   - { check_date: 2024-12-14, name: Alan McGinigle & Beth Pekarek, invoice: "20254300", check_number: "#9524", amount: "150.00" }
 
-- id: dep:2024-021
+- id: truist-checking:dep:2024-021
   checks:
   - { check_date: 2024-12-16, name: Nathalie Worthington, invoice: "20252000", check_number: "#449", amount: "150.00" }
 
-- id: dep:2024-022
+- id: truist-checking:dep:2024-022
   checks:
   - { check_date: 2024-12-18, name: Karen Ladd, invoice: "20254000", check_number: "#1518", amount: "150.00" }
 
-- id: dep:2025-001
+- id: truist-checking:dep:2025-001
   checks:
   - { check_date: 2024-12-19, name: Benjamin N. Collins, invoice: "20251100", check_number: "#1598", amount: "150.00" }
 
-- id: dep:2025-002
+- id: truist-checking:dep:2025-002
   checks:
   - { check_date: 2024-12-19, name: Harry & Amy Bulbrook, invoice: "20253200", check_number: "#4636", amount: "150.00" }
 
-- id: dep:2025-003
+- id: truist-checking:dep:2025-003
   checks:
   - { check_date: 2024-12-19, name: Michael Turnage & Susan Bowyer, invoice: "20252900", check_number: "#3279", amount: "150.00" }
 
-- id: dep:2025-004
+- id: truist-checking:dep:2025-004
   checks:
   - { check_date: 2024-12-19, name: Randy & Lynn Stephenson, invoice: "20251000", check_number: "#8933", amount: "150.00" }
 
-- id: dep:2025-005
+- id: truist-checking:dep:2025-005
   checks:
   - { check_date: 2024-12-23, name: Cynthia Williams, invoice: "20250700", check_number: "#812", amount: "150.00" }
 
-- id: dep:2025-006
+- id: truist-checking:dep:2025-006
   checks:
   - { check_date: 2024-12-26, name: Brenda Caverly, invoice: "20252300", check_number: "#198942", amount: "150.00" }
 
-- id: dep:2025-007
+- id: truist-checking:dep:2025-007
   checks:
   - { check_date: 2024-12-29, name: Judi & Ed Helsing, invoice: "20252800", check_number: "#1025", amount: "150.00" }
 
-- id: dep:2025-008
+- id: truist-checking:dep:2025-008
   checks:
   - { check_date: 2025-01-01, name: Angela Ray & Cheryl Currie, invoice: "20250900", check_number: "#129", amount: "150.00" }
 
-- id: dep:2025-009
+- id: truist-checking:dep:2025-009
   checks:
   - { check_date: 2025-01-19, name: Clayton & Susan Rodgers, invoice: "20251500", check_number: "#4204", amount: "150.00" }
 
-- id: dep:2025-010
+- id: truist-checking:dep:2025-010
   checks:
   - { check_date: 2025-02-04, name: John & Melissa Laign, invoice: "20252600", check_number: "#132", amount: "150.00" }
 
-- id: dep:2025-011
+- id: truist-checking:dep:2025-011
   checks:
   - { check_date: 2025-02-20, name: John Brading, invoice: "20250600", check_number: "#2995", amount: "150.00" }
 
-- id: dep:2025-012
+- id: truist-checking:dep:2025-012
   checks:
   - { check_date: 2025-02-27, name: David Donlon & Julia Thorp, invoice: "20251400", check_number: "#3645", amount: "150.00" }
 
-- id: dep:2025-013
+- id: truist-checking:dep:2025-013
   checks:
   - { check_date: 2025-02-27, name: Paul Stratton, invoice: "20252700", check_number: "#126", amount: "150.00" }
 
-- id: dep:2025-014
+- id: truist-checking:dep:2025-014
   checks:
   - { check_date: 2025-02-28, name: Harold Vogel, invoice: "20252500", check_number: "cash", amount: "150.00" }
