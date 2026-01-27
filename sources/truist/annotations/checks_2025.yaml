@@ -1,20 +1,20 @@
-rules:
-  - reference: chk:2025-005
+checks:
+  - id: chk-2025-05
     description: Smart Tree Service
     memo: Tree removal, XH05K-6F87W
     account: expenses:other
 
-  - reference: chk:2025-011
+  - id: chk-2025-11
     description: Jay Sloan & Trish Welsh
     memo: Life preserver for pond
     account: expenses:pond
 
-  - reference: chk:2025-012
+  - id: chk-2025-12
     description: Bagwell Holt Smith P.A.
     memo: Consultation on bylaw changes
     account: expenses:legal
 
-  - reference: chk:2025-013
+  - id: chk-2025-13
     description: Bagwell Holt Smith P.A.
     memo: Consultation on bylaw changes
     account: expenses:legal

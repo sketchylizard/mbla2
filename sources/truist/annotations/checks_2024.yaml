@@ -1,31 +1,31 @@
-rules:
-  - pattern: Check #\\d+
-    reference: chk:2024-007
+checks:
+  - id: chk-2024-07
     amount: 600.00
     description: Tyndell Lawn & Tree Service
     memo: Emergency tree removal--split cost
-    postings:
-      - {account: expenses:other, amount: 150.00}
-      - {account: assets:receivables, amount: 150.00, lot: 12, invoice: 20241201}
-      - {account: assets:receivables, amount: 150.00, lot: 14, invoice: 20241401}
-      - {account: assets:receivables, amount: 150.00, lot: 15, invoice: 20241501}
+    account: expenses:other
+#    postings:
+#      - {account: expenses:other, amount: 150.00}
+#      - {account: assets:receivables, amount: 150.00, lot: 12, invoice: 20241201}
+#      - {account: assets:receivables, amount: 150.00, lot: 14, invoice: 20241401}
+#      - {account: assets:receivables, amount: 150.00, lot: 15, invoice: 20241501}
 
-  - reference: 1056
+  - id: 1056
     description: Nationwide Insurance
     account: expenses:insurance
 
   - pattern: 
-    reference: 1057
+    id: 1057
     description: Carolina Dock & Marine Construction
     memo: Dock repair
     account: expenses:pond
 
-  - reference: chk:2024-001
+  - id: chk-2024-01
     description: Carolina Dock & Marine Construction
     memo: Structural assesment of dock
     account: expenses:pond
 
-  - reference: chk:2024-002
+  - id: chk-2024-02
     description: Bagwell Holt Smith P.A.
     memo: Consultation on covenant enforcement
     account: expenses:legal

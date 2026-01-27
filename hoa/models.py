@@ -9,7 +9,7 @@ from enum import Enum
 from hashlib import sha256
 from pathlib import Path
 from typing import Callable, List, Protocol
-from typing import Optional, Iterable, TextIO, Dict, Any, Self
+from typing import Iterable, TextIO, Dict, Any, Self
 import json
 
 from hoa import config

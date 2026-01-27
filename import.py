@@ -95,9 +95,25 @@ def journal_entry_from_event(
 ) -> JournalEntry:
 
     # If we have an annotation with get_postings method, use it
-    if event.annotation and hasattr(event.annotation, "get_postings"):
-        # Could be DepositAnnotation or CategorizationRule
-        contra_postings = event.annotation.get_postings(event)
+    if event.annotation:
+        contra_postings = event.annotation.postings
+        remaining_amount = event.amount
+        for p in contra_postings:
+            if p.amount != Decimal(0):
+                if abs(p.amount) > abs(remaining_amount):
+                    raise ValueError(
+                        f"Annotation postings exceed transaction amount: "
+                        f"{p.amount} > {remaining_amount}"
+                    )
+                remaining_amount -= p.amount
+            else:
+                if remaining_amount == 0:
+                    raise ValueError(
+                        f"Annotation postings exceed transaction amount: "
+                        f"no remaining amount for open posting"
+                    )
+                p.amount = remaining_amount
+                remaining_amount = Decimal(0)
 
         # The bank side posting
         if event.from_account:
@@ -107,12 +123,15 @@ def journal_entry_from_event(
             # Money arriving
             bank_posting = Posting(account=event.to_account, amount=event.amount)
 
+        description = event.annotation.description or event.description or ""
+        memo = event.annotation.memo or event.memo
+
         return JournalEntry(
             posted_date=event.posted_date,
             amount=event.amount,
-            description=event.description,
+            description=description,
             type=event.type,
-            memo=event.memo,
+            memo=memo,
             postings=[bank_posting, *contra_postings],
             reference=event.reference,
             source=event.source,

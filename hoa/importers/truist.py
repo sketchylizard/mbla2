@@ -25,9 +25,9 @@ class Counter:
     def __init__(self):
         self.values = defaultdict(int)
 
-    def increment(self, year: int) -> str:
-        self.values[year] += 1
-        return f"{year}-{self.values[year]:02d}"
+    def increment(self, key: str) -> str:
+        self.values[key] += 1
+        return f"{key}-{self.values[key]:02d}"
 
 
 def parse_amount(value: str) -> Decimal:
@@ -176,6 +176,12 @@ def transaction_from_csv_row(
         else:
             type = TxType.debit
 
+        if reference is not None:
+            match = re.match(r"9750(\d+)", reference)
+            if match:
+                # Truist bank check
+                reference = f"chk-{posted_date.year}-{match.group(1)}"
+
         return Transaction(
             posted_date=posted_date,
             amount=abs(amount),
@@ -199,8 +205,7 @@ def transaction_from_csv_row(
     ):
         assert reference is None, f"Expected no reference for deposit: {description}"
         year = posted_date.year
-        count = deposit_counter.increment(year)
-        reference = f"dep-{count}"
+        reference = deposit_counter.increment(f"dep-{year}")
         type = TxType.deposit
     else:
         type = TxType.credit
@@ -302,6 +307,7 @@ def apply_annotations(
                 events[txn_index] = annotation.apply(event)
                 # annotation should only match one transaction
                 found = True
+                print(f"Applied annotation {annotation.reference} to event")
                 break
 
         if not found:

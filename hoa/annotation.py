@@ -24,19 +24,21 @@ class Annotation:
     """
 
     reference: str
-    total: Decimal
     postings: List[Posting]
-    description: str = ""
-    memo: str = ""
+    total: Decimal | None = None
+    description: str | None = None
+    memo: str | None = None
 
     def matches(self, txn: Transaction) -> bool:
-        return txn.reference == self.reference and self.total == txn.amount
+        if txn.reference != self.reference:
+            return False
+        if self.total is None or self.total == txn.amount:
+            return True
+        return False
 
     def apply(self, txn: Transaction) -> Transaction:
         """Apply deposit annotation to transaction"""
-        return txn.with_updates(
-            description=self.description, memo=self.memo, annotation=self
-        )
+        return txn.with_updates(annotation=self)
 
     @classmethod
     def load(cls, yaml_file: Path) -> List[Annotation]:
@@ -50,6 +52,8 @@ class Annotation:
         # Dispatch based on top-level key
         if "deposits" in data:
             results.extend([cls._load_deposit(entry) for entry in data["deposits"]])
+        elif "checks" in data:
+            results.extend([cls._load_check(entry) for entry in data["checks"]])
 
         return results
 
@@ -99,7 +103,19 @@ class Annotation:
 
         return Annotation(
             reference=entry["id"],
+            postings=checks,
             total=expected_total,
             description=description,
-            postings=checks,
+        )
+
+    @classmethod
+    def _load_check(cls, entry: dict) -> Annotation:
+        account = entry["account"]
+
+        return Annotation(
+            reference=str(entry["id"]),
+            postings=[Posting(account=account)],
+            total=None,
+            description=entry.get("description", None),
+            memo=entry.get("memo", None),
         )
