@@ -42,3 +42,11 @@ deposits:
 - id: dep-2026-07
   checks:
   - { check_date: 2025-12-31, check_number: 679136, name: Brenda Caverly, amount: 150.00, invoice: 20262300}
+
+- id: dep-2026-08
+  checks:
+  - { check_date: 2026-01-15, check_number: 163, name: Angela Ray, amount: 200.00, invoice: 20260900}
+
+- id: dep-2026-09
+  checks:
+  - { check_date: 2026-01-12, check_number: 1682, name: Ben Collins, amount: 150.00, invoice: 20261100}
