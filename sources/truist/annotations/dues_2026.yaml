@@ -50,3 +50,7 @@ deposits:
 - id: dep-2026-09
   checks:
   - { check_date: 2026-01-12, check_number: 1682, name: Ben Collins, amount: 150.00, invoice: 20261100}
+
+- id: dep-2026-10
+  checks:
+  - { check_date: 2026-0-14, check_number: 4289, name: Clayton Rodgers, amount: 150.00, invoice: 20261500}
