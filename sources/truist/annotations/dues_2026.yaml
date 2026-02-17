@@ -53,4 +53,8 @@ deposits:
 
 - id: dep-2026-10
   checks:
+  - { check_date: 2026-02-05, check_number: 4661, name: Harry Bulbrook, amount: 200.00, invoice: 20263200 }
+
+- id: dep-2026-11
+  checks:
   - { check_date: 2026-0-14, check_number: 4289, name: Clayton Rodgers, amount: 150.00, invoice: 20261500}

@@ -65,26 +65,11 @@ def is_applicable(event: Transaction) -> bool:
         return True
 
     if event.bank == "venmo":
-        # check for keywords
-        keywords = [
-            "mbla",
-            "miles branch",
-            "mbloa",
-            "dues",
-            "lot",
-            "lonna",
-            "carson",
-            "lauren",
-            "hoa",
-            "mbhoa",
-        ]
         if event.memo is None:
             return False
 
-        for keyword in keywords:
-            if keyword in event.memo.lower():
-                return True
-        return False
+        memo_lower = event.memo.lower()
+        return any(keyword in memo_lower for keyword in config.VENMO_HOA_KEYWORDS)
 
     return True
 

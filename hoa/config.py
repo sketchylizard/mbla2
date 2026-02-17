@@ -21,5 +21,19 @@ DATABASE = PROJECT_ROOT / "mbla.db"
 
 ASSOCIATION_NAME = "Miles Branch Landowners Association"
 
+# Venmo transaction filtering
+VENMO_HOA_KEYWORDS = [
+    "mbla",
+    "miles branch",
+    "mbloa",
+    "dues",
+    "lot",
+    "lonna",
+    "carson",
+    "lauren",
+    "hoa",
+    "mbhoa",
+]
+
 # Set locale (do once at startup)
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
