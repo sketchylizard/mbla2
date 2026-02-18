@@ -41,6 +41,7 @@ class Lot:
     phones: list[str]
     address: list[str]
     mailing: list[str] | None = None
+    venmo_names: list[str] = None
     grouped_lots: list[int] | None = None
     hoa_owned: bool = False
 
@@ -51,8 +52,10 @@ class MemberDirectory:
             data = yaml.safe_load(f)
 
         self.lots = {}
+        self.name_to_lot = {}  # name (lowercase) -> lot_number
+
         for lot_num, info in data.items():
-            self.lots[int(lot_num)] = Lot(
+            lot = Lot(
                 lot_number=int(lot_num),
                 owners=info.get("owners", []),
                 emails=info.get("emails", []),
@@ -61,51 +64,48 @@ class MemberDirectory:
                 mailing=info.get("mailing"),
                 grouped_lots=info.get("grouped_lots"),
                 hoa_owned=info.get("hoa_owned", False),
+                venmo_names=info.get("venmo_names"),
             )
+            self.lots[int(lot_num)] = lot
 
-    def find_lot_by_name(self, name: str, exact: bool = False) -> Lot | None:
+            # Build name lookup index (skip HOA-owned lots)
+            if not lot.hoa_owned:
+                # Add owner names and variations
+                for owner in lot.owners:
+                    self.name_to_lot[owner.lower()] = int(lot_num)
+                    for variation in generate_name_variations(owner):
+                        self.name_to_lot[variation.lower()] = int(lot_num)
+
+                # Add venmo names
+                if lot.venmo_names:
+                    for vname in lot.venmo_names:
+                        self.name_to_lot[vname.lower()] = int(lot_num)
+
+    def find_lot_by_name(self, name: str, exact: bool = True) -> Lot | None:
         """
-        Find lot number by owner name.
+        Find lot by owner name or Venmo name.
 
         Args:
             name: Name to search for
-            exact: If True, require exact match. If False, allow partial matches.
-
-        Examples:
-            find_lot_by_name("John Brading") -> 6 (exact match with variation)
-            find_lot_by_name("Brading") -> 6 (partial match)
-            find_lot_by_name("John R Brading", exact=True) -> 6
+            exact: If True, exact match only. If False, partial match allowed.
         """
-
         if not name:
             return None
 
         name_lower = name.lower().strip()
-
         if not name_lower:
             return None
 
-        for lot_num, lot in self.lots.items():
-            if lot.hoa_owned:
-                continue
-
-            for owner in lot.owners:
-                if exact:
-                    # Check exact match against original and variations
-                    if name_lower == owner.lower():
-                        return lot
-                    for variation in generate_name_variations(owner):
-                        if name_lower == variation.lower():
-                            return lot
-                else:
-                    # Partial match - check if search term appears in any variation
-                    if name_lower in owner.lower():
-                        return lot
-                    for variation in generate_name_variations(owner):
-                        if name_lower in variation.lower():
-                            return lot
-
-        return None
+        if exact:
+            # O(1) lookup
+            lot_num = self.name_to_lot.get(name_lower)
+            return self.lots.get(lot_num) if lot_num else None
+        else:
+            # Partial match - still need to search
+            for indexed_name, lot_num in self.name_to_lot.items():
+                if name_lower in indexed_name:
+                    return self.lots[lot_num]
+            return None
 
     def get_lot(self, lot_number: int) -> Lot | None:
         """Get lot information by number."""

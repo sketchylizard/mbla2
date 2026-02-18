@@ -14,7 +14,7 @@ import os
 
 from hoa import config
 from hoa.journal import Journal, Posting, JournalEntry
-from hoa.models import merge_transfers, Source, Transaction, TxType
+from hoa.models import Invoice, merge_transfers, Source, Transaction, TxType
 from hoa.members import MemberDirectory, Lot
 
 
@@ -129,8 +129,21 @@ def journal_entry_from_event(
     from_account = event.from_account
     to_account = event.to_account
     memo = event.memo
+    invoice = None
+    is_dues = False
 
     if lot:
+        # Check if this is a dues payment using HOA keywords
+        memo_lower = (memo or "").lower()
+        is_dues = any(keyword in memo_lower for keyword in config.VENMO_HOA_KEYWORDS)
+
+        if is_dues:
+            # Dues payment - use receivables and assign invoice
+            fiscal_year = event.posted_date.year
+            if event.posted_date.month == 12:  # December pays next year
+                fiscal_year += 1
+            invoice = Invoice(f"{fiscal_year}{lot.lot_number:02d}00")
+
         if from_account is None:
             from_account = f"assets:receivables:lot{lot.lot_number}"
         elif to_account is None:
@@ -143,9 +156,13 @@ def journal_entry_from_event(
     other_account = None
 
     if event.type == "debit" or event.type == "deposit":
-        other_account = "assets:income:unknown"
+        other_account = "income:unknown"
     if event.type in ("credit", "check", "fee"):
         other_account = "expenses:unknown"
+
+    # Override for dues payments
+    if is_dues and event.type == "credit":
+        other_account = "income:dues"
 
     if from_account is None:
         from_account = other_account
@@ -160,7 +177,7 @@ def journal_entry_from_event(
         )
 
     postings = (
-        Posting(account=from_account, amount=-event.amount),
+        Posting(account=from_account, amount=-event.amount, invoice=invoice),
         Posting(account=to_account, amount=event.amount),
     )
 

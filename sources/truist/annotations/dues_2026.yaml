@@ -45,16 +45,24 @@ deposits:
 
 - id: dep-2026-08
   checks:
-  - { check_date: 2026-01-15, check_number: 163, name: Angela Ray, amount: 200.00, invoice: 20260900}
+  - { check_date: 2026-01-12, check_number: 1682, name: Ben Collins, amount: 150.00, invoice: 20261100}
 
 - id: dep-2026-09
   checks:
-  - { check_date: 2026-01-12, check_number: 1682, name: Ben Collins, amount: 150.00, invoice: 20261100}
+  - { check_date: 2026-01-15, check_number: 163, name: Angela Ray, amount: 200.00, invoice: 20260900}
 
 - id: dep-2026-10
   checks:
-  - { check_date: 2026-02-05, check_number: 4661, name: Harry Bulbrook, amount: 200.00, invoice: 20263200 }
+  - { check_date: 2026-0-14, check_number: 4289, name: Clayton Rodgers, amount: 150.00, invoice: 20261500}
 
 - id: dep-2026-11
   checks:
-  - { check_date: 2026-0-14, check_number: 4289, name: Clayton Rodgers, amount: 150.00, invoice: 20261500}
+  - { check_date: 2026-02-05, check_number: 4661, name: Harry Bulbrook, amount: 200.00, invoice: 20263200 }
+
+- id: dep-2026-12
+  checks:
+  - { check_date: 2026-01-13, check_number: 3310, name: Susan Bower, amount: 150.00, invoice: 20262900 }
+
+- id: dep-2026-13
+  checks:
+  - { check_date: 2026-02-17, check_number: 1690, name: Jen Chester, amount: 200.00, invoice: 20262200 }
