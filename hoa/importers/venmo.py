@@ -221,8 +221,10 @@ def extract_events(path: Path) -> List[Transaction]:
     return events
 
 
-def process(venmo_root: Path) -> List[Transaction]:
+def process() -> List[Transaction]:
     events: List[Transaction] = []
+
+    venmo_root = config.SOURCES / "venmo"
 
     statements_path = venmo_root / "statements"
     files = sorted(statements_path.glob("*.csv"))

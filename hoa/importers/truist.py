@@ -320,11 +320,13 @@ def apply_annotations(
     return events
 
 
-def process(truist_root: Path) -> List[Transaction]:
+def process() -> List[Transaction]:
     # Stage 1: Extract raw transactions from CSV
     events: List[Transaction] = []
 
     deposit_counter = Counter()
+
+    truist_root = config.SOURCES / "truist"
 
     counter_file = truist_root / "counters.yaml"
     if counter_file.is_file():

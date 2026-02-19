@@ -9,13 +9,17 @@ Dispatches to specialized importer modules based on file location.
 from decimal import Decimal
 from pathlib import Path
 from typing import List
+
+import importlib
 import locale
 import os
+import pkgutil
 
 from hoa import config
 from hoa.journal import Journal, Posting, JournalEntry
-from hoa.models import Invoice, merge_transfers, Source, Transaction, TxType
 from hoa.members import MemberDirectory, Lot
+from hoa.models import Invoice, merge_transfers, Source, Transaction, TxType
+import hoa.importers
 
 
 def print_summary(
@@ -232,40 +236,17 @@ def main():
     checking_before = journal.get_balance("assets:truist:checking")
     savings_before = journal.get_balance("assets:truist:savings")
 
-    sources_root = config.SOURCES.resolve()
-
-    # Recursively find all files under the sources directory and dispatch to the appropriate importer based on file
-    # path.
-
     all_transactions = []
-
-    dirs = list(sources_root.glob("*"))
-    for dir in dirs:
-        if not dir.is_dir():
-            continue
-
-        importer_name = dir.name  # 'truist', 'venmo', 'journals'
-
-        # if importer_name == "venmo":
-        #     continue
-
-        # Dynamically import the processor
+    # Load each importer and let it process any new transactions, then merge them into the journal entries list.
+    for finder, importer_name, ispkg in pkgutil.iter_modules(hoa.importers.__path__):
         try:
-            importer = __import__(
-                f"hoa.importers.{importer_name}", fromlist=["process"]
-            )
-            transactions = importer.process(dir)
-
+            importer = importlib.import_module(f"hoa.importers.{importer_name}")
+            transactions = importer.process()
             print(f"Processed {len(transactions)} from {importer_name}")
-
-            # Filter out external accounts
             transactions = filter_out_external_accounts(transactions)
-
-            # Match transfer transactions
             all_transactions = merge_transfers(all_transactions, transactions, 5)
-
-        except ModuleNotFoundError:
-            print(f"Warning: No importer found for {importer_name}")
+        except Exception as e:
+            print(f"Warning: importer {importer_name} failed: {e}")
 
     create_journal_entries(journal, directory, all_transactions)
 

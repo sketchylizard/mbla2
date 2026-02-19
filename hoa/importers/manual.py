@@ -41,8 +41,10 @@ def extract_events(path: Path) -> List[Transaction]:
     return events
 
 
-def process(manual_root: Path) -> List[Transaction]:
+def process() -> List[Transaction]:
     events: List[Transaction] = []
+
+    manual_root = config.SOURCES / "manual"
 
     files = sorted(manual_root.glob("*.yaml"))
     for path in files:
