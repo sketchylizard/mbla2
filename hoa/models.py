@@ -93,6 +93,10 @@ class Posting:
     invoice: Invoice | None = None
     reference: str | None = None
 
+    @property
+    def lot(self) -> int:
+        return int(self.invoice_number[4:6]) if self.invoice else None
+
     @classmethod
     def from_annotation_dict(cls, d: dict) -> "Posting":
         return cls(

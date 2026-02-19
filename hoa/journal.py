@@ -91,9 +91,11 @@ class Journal:
             journal_id INTEGER NOT NULL,
             account TEXT NOT NULL,
             amount INTEGER NOT NULL,
-            lot INTEGER,
             invoice TEXT,
             reference TEXT, -- check # or other reference
+            lot INTEGER GENERATED ALWAYS AS (
+                CAST(SUBSTR(invoice, 5, 2) AS INTEGER)
+            ) VIRTUAL,
             FOREIGN KEY(journal_id) REFERENCES journal_entry(journal_id)
         )
         """
@@ -120,16 +122,15 @@ class Journal:
         cursor.execute(
             """
         INSERT INTO posting
-        (journal_id, account, amount, lot, invoice, reference)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (journal_id, account, amount, invoice, reference)
+        VALUES (?, ?, ?, ?, ?)
         """,
             (
                 journal_id,
                 posting.account,
                 int(posting.amount * 100),  # store as integer cents
-                posting.invoice.lot if posting.invoice else None,
-                str(posting.invoice),
-                posting.reference,
+                str(posting.invoice) if posting.invoice else None,
+                posting.reference if posting.reference else None,
             ),
         )
         posting_id = cursor.lastrowid

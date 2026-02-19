@@ -153,6 +153,21 @@ def journal_entry_from_event(
         elif to_account is None:
             to_account = f"assets:payables:lot{lot.lot_number}"
 
+    if event.postings:
+        # If there are already postings from an annotation, we won't apply the name-based logic
+        # to avoid conflicts. Instead, we'll just journalize the event as-is.
+        return JournalEntry(
+            posted_date=event.posted_date,
+            amount=event.amount,
+            description=event.description or "",
+            type=event.type,
+            memo=event.memo,
+            postings=event.postings,
+            reference=event.reference,
+            source=event.source,
+            transfer_source=event.transfer_source,
+        )
+
     assert (
         from_account is not None or to_account is not None
     ), "At least one of from_account or to_account must be set"

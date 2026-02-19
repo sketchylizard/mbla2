@@ -1,6 +1,8 @@
 # config.py
 
 from pathlib import Path
+from decimal import Decimal
+
 import locale
 
 # Project root = parent of this file (assuming config.py is in hoa/)
@@ -35,5 +37,19 @@ VENMO_HOA_KEYWORDS = [
     "mbhoa",
 ]
 
+# Dues and fees by fiscal year
+DUES = {
+    2024: Decimal("150.00"),
+    2025: Decimal("150.00"),
+    2026: Decimal("150.00"),
+}
+
+LATE_FEE = {
+    2024: Decimal("75.00"),
+    2025: Decimal("75.00"),
+    2026: Decimal("75.00"),
+}
+
+START_YEAR = 2024
 # Set locale (do once at startup)
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
