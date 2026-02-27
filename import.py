@@ -174,9 +174,11 @@ def journal_entry_from_event(
 
     other_account = None
 
-    if event.type == "debit" or event.type == "deposit":
+    if event.type in ("debit", "deposit"):
+        other_account = "expenses:unknown"
+    if event.type in ("credit",):
         other_account = "income:unknown"
-    if event.type in ("credit", "check", "fee"):
+    if event.type in ("check", "fee"):
         other_account = "expenses:unknown"
 
     # Override for dues payments

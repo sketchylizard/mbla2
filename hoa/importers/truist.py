@@ -166,13 +166,16 @@ def transaction_from_csv_row(
             source=Source(str(path), line_no),
         )
 
+    to_account = None
+
     # Money leaving (negative amount)
     if amount < 0:
         # Determine semantic type based on description
         if reference:
             type = TxType.check
-        elif "FEE" in description.upper():
+        elif "Service charges" in description or "fee" in description.lower():
             type = TxType.fee
+            to_account = "expenses:bank fees"
         else:
             type = TxType.debit
 
@@ -182,13 +185,27 @@ def transaction_from_csv_row(
                 # Truist bank check
                 reference = f"chk-{posted_date.year}-{match.group(1)}"
 
+        if re.search(r"NWEDI|NATIONWIDE INS", description, re.IGNORECASE):
+            return Transaction(
+                posted_date=posted_date,
+                amount=abs(amount),
+                type=TxType.debit,
+                bank="truist",
+                from_account=account,
+                to_account="expenses:insurance",
+                reference=reference,
+                description="Nationwide Insurance",
+                memo=None,
+                source=Source(str(path), line_no),
+            )
+
         return Transaction(
             posted_date=posted_date,
             amount=abs(amount),
             type=type,
             bank="truist",
             from_account=account,
-            to_account=None,
+            to_account=to_account,
             reference=reference,
             description=description,
             memo=None,
@@ -197,6 +214,20 @@ def transaction_from_csv_row(
 
     # Money arriving (positive amount)
     assert amount > 0, f"Expected positive amount for {description}"
+
+    if description.lower() == "interest payment":
+        return Transaction(
+            posted_date=posted_date,
+            amount=amount,
+            type=TxType.credit,
+            bank="truist",
+            from_account="income:interest",
+            to_account=account,
+            reference=reference,
+            description=description,
+            memo=None,
+            source=Source(str(path), line_no),
+        )
 
     if category_name == "deposits" and description.lower() in (
         "mobile deposit",

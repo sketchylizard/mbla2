@@ -15,14 +15,20 @@ from hoa.members import MemberDirectory
 import sqlite3
 
 
-def get_paid_lots(db_path, fiscal_year: int) -> set[int]:
+def get_payment_totals(db_path, fiscal_year: int) -> dict[int, int]:
+    """Returns a dict of lot -> total amount paid (in cents) for the fiscal year."""
     conn = sqlite3.connect(db_path)
     try:
-        cursor = conn.execute(
-            "SELECT DISTINCT lot FROM posting WHERE invoice LIKE ? AND lot IS NOT NULL",
-            (f"{fiscal_year}%",),
-        )
-        return {row[0] for row in cursor.fetchall()}
+        sql = """
+            SELECT p.lot, SUM(-p.amount) AS total_paid
+            FROM posting p
+            WHERE p.invoice LIKE ?
+              AND p.account LIKE 'assets:receivables:%'
+              AND p.amount < 0
+            GROUP BY p.lot
+        """
+        cursor = conn.execute(sql, (f"{fiscal_year}%00",))
+        return {row[0]: row[1] for row in cursor.fetchall()}
     finally:
         conn.close()
 
@@ -30,12 +36,20 @@ def get_paid_lots(db_path, fiscal_year: int) -> set[int]:
 def main():
     fiscal_year = 2026
     bcc_mode = "--bcc" in sys.argv
+    full_dues = int(config.DUES[fiscal_year] * 100)  # in cents
 
     directory = MemberDirectory(config.DIRECTORY)
-    paid_lots = get_paid_lots(config.DATABASE, fiscal_year)
-
+    payment_totals = get_payment_totals(config.DATABASE, fiscal_year)
     billable_lots = directory.get_all_lots_for_billing()
-    unpaid = sorted(lot for lot in billable_lots if lot not in paid_lots)
+
+    unpaid = []
+    partial = []
+    for lot_num in sorted(billable_lots):
+        total = payment_totals.get(lot_num, 0)
+        if total == 0:
+            unpaid.append(lot_num)
+        elif total < full_dues:
+            partial.append((lot_num, total))
 
     if bcc_mode:
         emails = []
@@ -44,15 +58,23 @@ def main():
             emails.extend(lot.emails)
         print(", ".join(emails))
     else:
-        print(
-            f"Unpaid dues for {fiscal_year} ({len(unpaid)} of {len(billable_lots)} lots):"
-        )
-        print()
+        print(f"Dues status for {fiscal_year} (full dues: ${full_dues / 100:.2f})\n")
+
+        print(f"Unpaid ({len(unpaid)} lots):")
         for lot_num in unpaid:
             lot = directory.get_lot(lot_num)
             owners = ", ".join(lot.owners)
             emails = ", ".join(lot.emails) if lot.emails else "no email on file"
             print(f"  Lot {lot_num:2d}: {owners} <{emails}>")
+
+        print(f"\nPartial ({len(partial)} lots):")
+        for lot_num, total in partial:
+            lot = directory.get_lot(lot_num)
+            owners = ", ".join(lot.owners)
+            shortfall = (full_dues - total) / 100
+            print(
+                f"  Lot {lot_num:2d}: {owners} -- paid ${total / 100:.2f}, owes ${shortfall:.2f}"
+            )
 
 
 if __name__ == "__main__":

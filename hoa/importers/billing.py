@@ -78,7 +78,7 @@ def process() -> list[Transaction]:
         postings = [
             Posting(
                 account=f"income:dues:{year}",
-                amount=total_dues,
+                amount=-total_dues,
                 invoice=None,
                 reference=None,
             )
@@ -89,7 +89,7 @@ def process() -> list[Transaction]:
             postings.append(
                 Posting(
                     account=f"assets:receivables:lot{lot_num}",
-                    amount=-config.DUES[year],
+                    amount=config.DUES[year],
                     invoice=invoice,
                     reference=None,
                 )

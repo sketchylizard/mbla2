@@ -1,14 +1,7 @@
 checks:
-  - id: chk-2024-07
-    amount: 600.00
-    description: Tyndell Lawn & Tree Service
-    memo: Emergency tree removal--split cost
-    account: expenses:other
-#    postings:
-#      - {account: expenses:other, amount: 150.00}
-#      - {account: assets:receivables, amount: 150.00, lot: 12, invoice: 20241201}
-#      - {account: assets:receivables, amount: 150.00, lot: 14, invoice: 20241401}
-#      - {account: assets:receivables, amount: 150.00, lot: 15, invoice: 20241501}
+  - id: 1055
+    description: San Remo Landscaping
+    account: expenses:landscaping
 
   - id: 1056
     description: Nationwide Insurance
@@ -29,3 +22,43 @@ checks:
     description: Bagwell Holt Smith P.A.
     memo: Consultation on covenant enforcement
     account: expenses:legal
+
+  - id: chk-2024-03
+    description: San Remo Landscaping
+    account: expenses:landscaping
+    
+  - id: chk-2024-04
+    description: San Remo Landscaping
+    account: expenses:landscaping
+
+  - id: chk-2024-05
+    description: Bagwell Holt Smith P.A.
+    memo: Consultation on covenant enforcement
+    account: expenses:legal
+
+  - id: chk-2024-06
+    description: San Remo Landscaping
+    account: expenses:landscaping
+
+  - id: chk-2024-07
+    amount: 600.00
+    description: Tyndell Lawn & Tree Service
+    memo: Emergency tree removal--split cost
+    account: expenses:other
+#    postings:
+#      - {account: expenses:other, amount: 150.00}
+#      - {account: assets:receivables, amount: 150.00, lot: 12, invoice: 20241201}
+#      - {account: assets:receivables, amount: 150.00, lot: 14, invoice: 20241401}
+#      - {account: assets:receivables, amount: 150.00, lot: 15, invoice: 20241501}
+
+  - id: chk-2024-08
+    description: San Remo Landscaping
+    account: expenses:landscaping
+
+  - id: chk-2024-09
+    description: San Remo Landscaping
+    account: expenses:landscaping
+
+  - id: chk-2024-10
+    description: San Remo Landscaping
+    account: expenses:landscaping

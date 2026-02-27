@@ -74,3 +74,24 @@ deposits:
 - id: dep-2026-15
   checks:
   - { check_date: 2026-02-19, check_number: 1073, name: Greg Behr, amount: 150.00, invoice: 20264600 }
+
+- id: dep-2026-16
+  checks:
+  - { check_date: 2026-02-14, check_number: 3273, name: Harold Vogel, amount: 150.00, invoice: 20262500 }
+
+- id: dep-2026-17
+  checks:
+  - { check_date: 2026-02-21, check_number: 8982, name: Lynn Stephenson, amount: 50.00, invoice: 20261000 }
+
+- id: dep-2026-18
+  checks:
+  - { check_date: 2026-02-19, check_number: 9122, name: Judith Helsing, amount: 150.00, invoice: 20262800 }
+
+- id: dep-2026-19
+  checks:
+  - { check_date: 2026-02-23, check_number: 1021, name: Melissa Laign, amount: 150.00, invoice: 20262600 }
+
+- id: dep-2026-20
+  checks:
+  - { check_date: 2026-02-26, check_number: 3112, name: Jerry Richardson, amount: 200.00, invoice: 20263300 }
+  
