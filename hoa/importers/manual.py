@@ -1,16 +1,54 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from typing import List, DefaultDict, Tuple
+from typing import List
+import re  # NEW
 import yaml
 import sys
 
-from hoa.models import Transaction, Source, TxType
-from hoa import accounts, config
+from hoa.models import (
+    Invoice,
+    Posting,
+    Transaction,
+    Source,
+    TxType,
+)  # added Invoice, Posting
+from hoa import config
+
+
+def _build_opening_postings(
+    entry_account: str,
+    equity_account: str,
+    amount: Decimal,  # positive = debit balance, negative = credit balance
+    opening_date: date,
+) -> List[Posting]:
+    """
+    Build a balanced pair of postings for an opening balance entry.
+
+    The YAML uses debit/credit from the HOA's perspective:
+      debit:  normal asset balance (e.g. cash in bank, amounts owed to us)
+      credit: contra-asset balance (e.g. overpayment -- we owe them)
+
+    amount = debit - credit, so:
+      amount > 0  -> debit balance  -> positive posting in entry_account
+      amount < 0  -> credit balance -> negative posting in entry_account
+    """
+    invoice = None
+
+    # If this is a receivables account, extract lot number and build invoice.
+    # Serial 99 is reserved for opening balance adjustments.
+    match = re.match(r"assets:receivables:lot(\d+)", entry_account)
+    if match:
+        lot = int(match.group(1))
+        invoice = Invoice.create(year=opening_date.year, lot=lot, serial=99)
+
+    return [
+        Posting(account=entry_account, amount=amount, invoice=invoice),
+        Posting(account=equity_account, amount=-amount),
+    ]
 
 
 def extract_events(path: Path) -> List[Transaction]:
@@ -20,20 +58,28 @@ def extract_events(path: Path) -> List[Transaction]:
 
     opening_date = yaml_data.get("date")
     description = yaml_data.get("description", "Opening balance")
-    account = yaml_data.get("account", "equity:opening_balances")
+    equity_account = yaml_data.get("account", "equity:opening_balances")
 
     for entry in yaml_data.get("balances", []):
-        credit = Decimal(str(entry.get("credit", "0")))
         debit = Decimal(str(entry.get("debit", "0")))
-        amount = credit - debit
+        credit = Decimal(str(entry.get("credit", "0")))
+        amount = debit - credit  # positive = normal asset debit balance
+
+        entry_account = entry["account"]
+
+        postings = _build_opening_postings(
+            entry_account, equity_account, amount, opening_date
+        )
+
         event = Transaction(
             posted_date=opening_date,
             description=description,
-            amount=amount,
+            amount=abs(amount),
             bank="manual",
             type=TxType.manual,
-            from_account=entry["account"],
-            to_account=account,
+            from_account=None,
+            to_account=None,
+            postings=postings,
             source=Source(file=str(path), line=0),
         )
         events.append(event)
@@ -66,9 +112,7 @@ def main(argv: list[str]) -> int:
         )
         return 2
 
-    all_events: list[Transaction] = []
-
-    all_events = process(config.SOURCES / "manual")
+    all_events = process()
 
     Transaction.write_ndjson(all_events, sys.stdout)
     return 0

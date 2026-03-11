@@ -149,9 +149,9 @@ def journal_entry_from_event(
             invoice = Invoice(f"{fiscal_year}{lot.lot_number:02d}00")
 
         if from_account is None:
-            from_account = f"assets:receivables:lot{lot.lot_number}"
+            from_account = f"assets:receivables:lot{lot.lot_number:02}"
         elif to_account is None:
-            to_account = f"assets:payables:lot{lot.lot_number}"
+            to_account = f"assets:payables:lot{lot.lot_number:02}"
 
     if event.postings:
         # If there are already postings from an annotation, we won't apply the name-based logic

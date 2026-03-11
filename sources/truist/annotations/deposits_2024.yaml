@@ -14,5 +14,5 @@ deposits:
   - id: dep-2024-18
     memo: Contingency fund
     checks:
-      - { check_date: 2024-08-11, name: Lynn Stephenson, invoice: "20241401", check: "", amount: 50.00 }
+      - { check_date: 2024-08-11, name: Lynn Stephenson, account: "income:contributions", check: "", amount: 50.00 }
   

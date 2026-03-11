@@ -93,6 +93,7 @@
   owners: [Ed Sutton, Sally Sutton]
   emails: [esutton@mindspring.com, sallysutton@mindspring.com]
   phones: [Mobile:919-417-8784]
+  venmo_names: [Sally Sutton Studios]
   address:
     - 162 Lonna Ct
     - Pittsboro, NC 27312-8793
@@ -157,6 +158,7 @@
   owners: [Tony Chester, Jen Chester]
   emails: [jenchester11@gmail.com]
   phones: [Mobile:919-267-0561]
+  venmo_names: [William Chester]
   address:
     - 96 Miles Branch Rd
     - Pittsboro, NC 27312-8796
@@ -218,10 +220,11 @@
     - Pittsboro, NC 27312-5703
 
 30:
-  owners: [Gerald Cook, Hui Cook]
-  emails: [gcook1021@nc.rr.com]
-  phones: [Mobile:919-545-5662]
-  venmo_names: [Alexander Cook]
+  owners: [Roger Efrid, Elaine Barber]
+  emails: [elainemarybarber@gmail.com, refird@gmail.com]
+  phones: [Roger:910-619-5738, Elaine:910-233-2231]
+  venmo_names:
+    - "Alexander Cook" # The Cooks owned the house until 2025.
   address:
     - 23 Lauren Ct
     - Pittsboro, NC 27312-5703
@@ -261,7 +264,7 @@
     - Pittsboro, NC 27312-6492
 
 35:
-  owners: [Elaine Jabour, Sultan Jabour]
+  owners: [Elaine Jabbour, Sultan Jabbour]
   emails: [newyorkgirl65@yahoo.com, sijabbour@yahoo.com]
   phones: [Mobile:919-444-3222, Mobile:919-444-9250]
   address:
@@ -346,6 +349,7 @@
   owners: [Diane Swan, Scotty Young]
   emails: [diswanwoodgal@gmail.com, trancedance@mindspring.com]
   phones: [Mobile:919-548-3011, Mobile:919-414-3338]
+  venmo_names: [Michael Young]
   address:
     - 59 Artisan Ln
     - Pittsboro, NC 27312-9804

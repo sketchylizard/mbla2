@@ -25,7 +25,7 @@ def bill_dues(journal: Journal, directory: MemberDirectory, fiscal_year: int) ->
 
         postings = [
             Posting(
-                account=f"assets:receivables:lot{lot_num}",
+                account=f"assets:receivables:lot{lot_num:02}",
                 amount=amount,
                 invoice=invoice,
                 lot=lot_num,
@@ -88,7 +88,7 @@ def process() -> list[Transaction]:
             invoice = Invoice.create(year=year, lot=lot_num, serial=0)
             postings.append(
                 Posting(
-                    account=f"assets:receivables:lot{lot_num}",
+                    account=f"assets:receivables:lot{lot_num:02}",
                     amount=config.DUES[year],
                     invoice=invoice,
                     reference=None,

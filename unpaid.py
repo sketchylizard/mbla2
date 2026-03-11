@@ -15,19 +15,39 @@ from hoa.members import MemberDirectory
 import sqlite3
 
 
-def get_payment_totals(db_path, fiscal_year: int) -> dict[int, int]:
-    """Returns a dict of lot -> total amount paid (in cents) for the fiscal year."""
+def get_dues_balances(db_path, fiscal_year: int) -> dict[int, int]:
+    """Unpaid dues only — serial 00 invoices for the given year."""
     conn = sqlite3.connect(db_path)
     try:
-        sql = """
-            SELECT p.lot, SUM(-p.amount) AS total_paid
-            FROM posting p
-            WHERE p.invoice LIKE ?
-              AND p.account LIKE 'assets:receivables:%'
-              AND p.amount < 0
-            GROUP BY p.lot
+        cursor = conn.execute(
+            """
+            SELECT lot, SUM(amount) AS balance
+            FROM posting
+            WHERE account LIKE 'assets:receivables:lot%'
+              AND invoice LIKE ?
+            GROUP BY lot
+            HAVING SUM(amount) > 0
+        """,
+            (f"{fiscal_year}%00",),
+        )
+        return {row[0]: row[1] for row in cursor.fetchall()}
+    finally:
+        conn.close()
+
+
+def get_total_balances(db_path) -> dict[int, int]:
+    """Total receivables balance across all charges."""
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.execute(
+            """
+            SELECT lot, SUM(amount) AS balance
+            FROM posting
+            WHERE account LIKE 'assets:receivables:lot%'
+            GROUP BY lot
+            HAVING SUM(amount) != 0
         """
-        cursor = conn.execute(sql, (f"{fiscal_year}%00",))
+        )
         return {row[0]: row[1] for row in cursor.fetchall()}
     finally:
         conn.close()
@@ -39,7 +59,7 @@ def main():
     full_dues = int(config.DUES[fiscal_year] * 100)  # in cents
 
     directory = MemberDirectory(config.DIRECTORY)
-    payment_totals = get_payment_totals(config.DATABASE, fiscal_year)
+    payment_totals = get_dues_balances(config.DATABASE, fiscal_year)
     billable_lots = directory.get_all_lots_for_billing()
 
     unpaid = []

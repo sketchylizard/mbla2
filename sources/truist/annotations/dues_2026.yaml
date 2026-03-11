@@ -94,4 +94,15 @@ deposits:
 - id: dep-2026-20
   checks:
   - { check_date: 2026-02-26, check_number: 3112, name: Jerry Richardson, amount: 200.00, invoice: 20263300 }
-  
+
+- id: dep-2026-21
+  checks:
+  - { check_date: 2026-02-24, check_number: 3465, name: Elain Jabbour, amount: 50.00, invoice: 20263500 }  
+
+- id: dep-2026-22
+  checks:
+  - { check_date: 2026-02-28, check_number: 2952, name: John Brading, amount: 50.00, invoice: 20260600 }
+
+- id: dep-2026-23
+  checks:
+  - { check_date: 2026-03-07, check_number: 1022, name: Melissa Laign, amount: 50.00, invoice: 20262600 }

@@ -25,23 +25,24 @@ ASSOCIATION_NAME = "Miles Branch Landowners Association"
 
 # Venmo transaction filtering
 VENMO_HOA_KEYWORDS = [
-    "mbla",
-    "miles branch",
-    "mbloa",
-    "dues",
-    "lot",
-    "lonna",
     "carson",
-    "lauren",
+    "dues",
     "hoa",
+    "lauren",
+    "loa",
+    "lonna",
+    "lot",
     "mbhoa",
+    "mbla",
+    "mbloa",
+    "miles branch",
 ]
 
 # Dues and fees by fiscal year
 DUES = {
     2024: Decimal("150.00"),
     2025: Decimal("150.00"),
-    2026: Decimal("150.00"),
+    2026: Decimal("200.00"),
 }
 
 LATE_FEE = {

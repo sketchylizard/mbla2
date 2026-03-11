@@ -75,15 +75,24 @@ class Annotation:
         checks = []
         calculated_total = 0
         names = []
+
         for c in entry["checks"]:
-            invoice = Invoice(c["invoice"])
             amount = Decimal(str(c["amount"]))
             calculated_total += amount
             names.append(c["name"])
+
+            if "account" in c:
+                # Explicit account override — no invoice
+                account = c["account"]
+                invoice = None
+            else:
+                invoice = Invoice(c["invoice"])
+                account = f"assets:receivables:lot{invoice.lot:02}"
+
             checks.append(
                 Posting(
-                    account=f"assets:receivables:lot{invoice.lot}",
-                    amount=-Decimal(str(c["amount"])),
+                    account=account,
+                    amount=-amount,
                     invoice=invoice,
                     reference=str(c["check_number"]) if c.get("check_number") else None,
                 )
@@ -110,12 +119,34 @@ class Annotation:
 
     @classmethod
     def _load_check(cls, entry: dict) -> Annotation:
-        account = entry["account"]
+        if "postings" in entry:
+            postings = []
+            for p in entry["postings"]:
+                invoice = Invoice(str(p["invoice"])) if p.get("invoice") else None
+                # Derive full account name from invoice if account is bare 'assets:receivables'
+                account = p["account"]
+                if account == "assets:receivables" and invoice:
+                    account = f"assets:receivables:lot{invoice.lot:02}"
+                postings.append(
+                    Posting(
+                        account=account,
+                        amount=Decimal(str(p["amount"])),
+                        invoice=invoice,
+                    )
+                )
+            return Annotation(
+                reference=str(entry["id"]),
+                postings=postings,
+                total=Decimal(str(entry["amount"])) if "amount" in entry else None,
+                description=entry.get("description"),
+                memo=entry.get("memo"),
+            )
 
+        # Single account case
         return Annotation(
             reference=str(entry["id"]),
-            postings=[Posting(account=account)],
+            postings=[Posting(account=entry["account"])],
             total=None,
-            description=entry.get("description", None),
-            memo=entry.get("memo", None),
+            description=entry.get("description"),
+            memo=entry.get("memo"),
         )

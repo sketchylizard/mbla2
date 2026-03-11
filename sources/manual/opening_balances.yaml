@@ -11,7 +11,7 @@ balances:
     debit: 9688.17
   
   # Prepayments (what we owe homeowners - negative receivable)
-  - account: "receivables"
+  - account: "assets:receivables:lot01"
     credit: 450.00    # Credit = negative receivable
-    lot: 1
+    invoice: "00000100"
     note: "Prepaid through 2025"
