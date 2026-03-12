@@ -313,19 +313,43 @@ def merge_transfers(
         assert a.type == TxType.transfer
         assert b.type == TxType.transfer
 
-        if a.can_merge(b, date_tolerance_days):
-            print(
-                f"Merging transfer: {a.from_account}, {a.to_account}, {a.amount}, a: {a.posted_date}, b: {b.posted_date}"
-            )
-            output.append(a.with_transfer_source(b.source))
-        else:
+        # scan forward in list B to find a match for A (in case of out-of-order events) but not more than 5 transactions.
+
+        match_found = False
+        max_scan = 5
+        for scan_idx in range(j, min(j + max_scan, b_len)):
+            b_candidate = events_b[scan_idx]
+            if (
+                b_candidate.type == TxType.transfer
+                and b_candidate.transfer_source is None
+                and a.can_merge(b_candidate, date_tolerance_days)
+            ):
+                print(
+                    f"Merging transfer: {a.from_account}, {a.to_account}, {a.amount}, a: {a.posted_date}, b: {b_candidate.posted_date}"
+                )
+                output.append(a.with_transfer_source(b_candidate.source))
+                # Remove matched entry from B
+                del events_b[scan_idx]
+                b_len -= 1
+                match_found = True
+                break
+
+        if not match_found:
             print(
                 f"Unmatched transfer events: a: {a.posted_date}-{a.amount}, b: {b.posted_date}-{b.amount}"
             )
             output.append(a)
             output.append(b)
+            j += 1  # Only advance j if not merged
+
         i += 1
-        j += 1
+        # Only advance j if merged, otherwise already handled above
+        if match_found:
+            # j stays the same because we removed an item from events_b
+            pass
+        else:
+            # j already incremented above
+            pass
 
     # Append leftovers
     output.extend(events_a[i:])
