@@ -16,9 +16,11 @@ import os
 import pkgutil
 
 from hoa import config
+from hoa.annotation import apply_annotations
 from hoa.journal import Journal, Posting, JournalEntry
 from hoa.members import MemberDirectory, Lot
 from hoa.models import Invoice, merge_transfers, Source, Transaction, TxType
+
 import hoa.importers
 
 
@@ -264,6 +266,11 @@ def main():
             all_transactions = merge_transfers(all_transactions, transactions, 5)
         except Exception as e:
             print(f"Warning: importer {importer_name} failed: {e}")
+
+    # Stage 2: Load all annotations
+    all_transactions = apply_annotations(
+        all_transactions, config.SOURCES / "annotations"
+    )
 
     create_journal_entries(journal, directory, all_transactions)
 

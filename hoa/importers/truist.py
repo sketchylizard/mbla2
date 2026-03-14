@@ -14,7 +14,6 @@ import yaml
 
 from hoa import accounts
 from hoa import config
-from hoa.annotation import apply_annotations
 
 from hoa.models import Invoice, merge_transfers, Transaction, Source, TxType
 
@@ -343,15 +342,6 @@ def process() -> List[Transaction]:
     for path in sorted(statements_path.glob("*.csv")):
         file_events = extract_events(path, deposit_counter)
         events.extend(file_events)
-
-    # Stage 2: Load all annotations
-    events = apply_annotations(events, truist_root / "annotations")
-
-    # Stage 3: Apply categorization rules
-    #    events = apply_categorization_rules(events, rules)
-
-    # Stage 4: Apply deposit annotations
-    #    events = apply_deposit_annotations(events, deposits)
 
     with open(counter_file, "w") as f:
         yaml.safe_dump({"deposit_counter": dict(deposit_counter.values)}, f)
