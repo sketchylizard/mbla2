@@ -335,11 +335,10 @@ def process() -> List[Transaction]:
             data = yaml.safe_load(f) or {}
             deposit_counter.values = defaultdict(int, data.get("deposit_counter", {}))
 
-    statements_path = truist_root / "statements"
-    if not statements_path.is_dir():
-        raise FileNotFoundError(f"Expected directory: {statements_path}")
+    if not truist_root.is_dir():
+        raise FileNotFoundError(f"Expected directory: {truist_root}")
 
-    for path in sorted(statements_path.glob("*.csv")):
+    for path in sorted(truist_root.glob("*.csv")):
         file_events = extract_events(path, deposit_counter)
         events.extend(file_events)
 

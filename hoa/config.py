@@ -10,9 +10,6 @@ PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
 SOURCES = PROJECT_ROOT / "sources"
 
-BANK = SOURCES / "bank"
-RECEIPTS = SOURCES / "receipts"
-JOURNALS = SOURCES / "journals"
 DIRECTORY = SOURCES / "directory.yaml"
 
 BANKS = {

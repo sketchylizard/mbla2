@@ -229,8 +229,7 @@ def process() -> List[Transaction]:
 
     venmo_root = config.SOURCES / "venmo"
 
-    statements_path = venmo_root / "statements"
-    files = sorted(statements_path.glob("*.csv"))
+    files = sorted(venmo_root.glob("*.csv"))
     for path in files:
         events.extend(extract_events(path))
 
