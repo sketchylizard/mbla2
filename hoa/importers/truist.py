@@ -325,15 +325,11 @@ def process() -> List[Transaction]:
     # Stage 1: Extract raw transactions from CSV
     events: List[Transaction] = []
 
+    # At some point we may want to track deposit counts across different import
+    # runs, but for now we just start all years at 0.
     deposit_counter = Counter()
 
     truist_root = config.SOURCES / "truist"
-
-    counter_file = truist_root / "counters.yaml"
-    if counter_file.is_file():
-        with open(truist_root / "counters.yaml") as f:
-            data = yaml.safe_load(f) or {}
-            deposit_counter.values = defaultdict(int, data.get("deposit_counter", {}))
 
     if not truist_root.is_dir():
         raise FileNotFoundError(f"Expected directory: {truist_root}")
@@ -341,9 +337,6 @@ def process() -> List[Transaction]:
     for path in sorted(truist_root.glob("*.csv")):
         file_events = extract_events(path, deposit_counter)
         events.extend(file_events)
-
-    with open(counter_file, "w") as f:
-        yaml.safe_dump({"deposit_counter": dict(deposit_counter.values)}, f)
 
     return events
 
