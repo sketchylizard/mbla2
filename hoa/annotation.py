@@ -51,8 +51,8 @@ class Annotation:
         # Dispatch based on top-level key
         if "deposits" in data:
             results.extend([cls._load_deposit(entry) for entry in data["deposits"]])
-        elif "checks" in data:
-            results.extend([cls._load_check(entry) for entry in data["checks"]])
+        elif "transactions" in data:
+            results.extend([cls._load_check(entry) for entry in data["transactions"]])
 
         return results
 

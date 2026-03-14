@@ -1,4 +1,4 @@
-checks:
+transactions:
   - id: 1055
     description: San Remo Landscaping
     account: expenses:landscaping

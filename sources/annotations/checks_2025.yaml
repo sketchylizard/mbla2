@@ -1,4 +1,4 @@
-checks:
+transactions:
   - id: chk-2025-03
     description: San Remo Landscaping
     account: expenses:landscaping
@@ -50,3 +50,7 @@ checks:
   - id: chk-2025-14
     description: San Remo Landscaping
     account: expenses:landscaping
+
+  # Venmo to Lynn Stephenson for certified letter
+  - id: 4310988182311764382
+    account: expenses:misc

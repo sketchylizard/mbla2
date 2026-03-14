@@ -1,0 +1,4 @@
+transactions:
+  # Venmo to Kim Stewart for certified letters
+  - id: 4549884616929581061
+    account: expenses:misc
