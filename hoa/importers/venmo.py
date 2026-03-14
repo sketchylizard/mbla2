@@ -120,14 +120,17 @@ def handle_payment(ctx: VenmoContext):
     payer, payee = normalize_payment_parties(ctx.venmo_type, ctx.from_, ctx.to)
 
     if ctx.amount < 0:
+        paid_from_truist = ctx.funding_source.lower().startswith("truist")
+
         # Me paying someone
-        actual_type = "debit"
+        actual_type = TxType.transfer if paid_from_truist else TxType.debit
         from_account = (
             accounts.normalize(ctx.funding_source)
             if ctx.funding_source
             else "assets:venmo"
         )
-        to_account = None
+
+        to_account = "expenses:venmo:payments" if paid_from_truist else None
         counterparty = payee
         assert payer == "Jason Stewart"
     else:

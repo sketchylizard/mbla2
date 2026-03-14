@@ -207,6 +207,15 @@ class Transaction:
             date_diff = abs((self.posted_date - other.posted_date).days)
             return date_diff <= date_tolerance_days
 
+    def merge_with(self, other: Transaction) -> Transaction:
+        return replace(
+            self,
+            description=other.description or self.description,
+            memo=other.memo or self.memo,
+            reference=other.reference or self.reference,
+            transfer_source=other.source,
+        )
+
     # ---- NDJSON I/O ----
 
     def to_dict(self) -> Dict[str, Any]:
@@ -327,7 +336,7 @@ def merge_transfers(
                 print(
                     f"Merging transfer: {a.from_account}, {a.to_account}, {a.amount}, a: {a.posted_date}, b: {b_candidate.posted_date}"
                 )
-                output.append(a.with_transfer_source(b_candidate.source))
+                output.append(a.merge_with(b_candidate))
                 # Remove matched entry from B
                 del events_b[scan_idx]
                 b_len -= 1

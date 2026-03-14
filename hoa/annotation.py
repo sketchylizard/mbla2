@@ -150,3 +150,33 @@ class Annotation:
             description=entry.get("description"),
             memo=entry.get("memo"),
         )
+
+
+def apply_annotations(
+    events: List[Transaction], annotation_root: Path
+) -> List[Transaction]:
+    """Apply annotations to the given events, returning a new list of events with annotations applied."""
+    annotations = Annotation.load_all(annotation_root)
+
+    annotations.sort(key=lambda a: a.reference)
+
+    events.sort(key=lambda e: (e.reference or "~~~~~~~~~~"))
+
+    for annotation in annotations:
+        found = False
+        for txn_index, event in enumerate(events):
+            if annotation.matches(event):
+                events[txn_index] = annotation.apply(event)
+                # annotation should only match one transaction
+                found = True
+                print(f"Applied annotation {annotation.reference} to event")
+                break
+
+        if not found:
+            # If we didn't find a match, we can log a warning or raise an error
+            print(
+                f"Warning: No match found for annotation {annotation.reference} in events",
+                file=sys.stderr,
+            )
+
+    return events

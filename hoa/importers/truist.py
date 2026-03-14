@@ -14,7 +14,8 @@ import yaml
 
 from hoa import accounts
 from hoa import config
-from hoa.annotation import Annotation
+from hoa.annotation import apply_annotations
+
 from hoa.models import Invoice, merge_transfers, Transaction, Source, TxType
 
 
@@ -65,7 +66,7 @@ def transaction_from_csv_row(
     path: Path,
     line_no: int,
     deposit_counter: Counter,
-) -> Transaction:
+) -> Transaction | None:
     """
     Create a Transaction from a CSV row.
 
@@ -317,36 +318,6 @@ def extract_events(path: Path, deposit_counter: Counter) -> List[Transaction]:
                 break
             account, new_events, line_no = results
             events = merge_transfers(events, new_events)
-
-    return events
-
-
-def apply_annotations(
-    events: List[Transaction], annotation_root: Path
-) -> List[Transaction]:
-    """Apply annotations to the given events, returning a new list of events with annotations applied."""
-    annotations = Annotation.load_all(annotation_root)
-
-    annotations.sort(key=lambda a: a.reference)
-
-    events.sort(key=lambda e: (e.reference or "~~~~~~~~~~"))
-
-    for annotation in annotations:
-        found = False
-        for txn_index, event in enumerate(events):
-            if annotation.matches(event):
-                events[txn_index] = annotation.apply(event)
-                # annotation should only match one transaction
-                found = True
-                print(f"Applied annotation {annotation.reference} to event")
-                break
-
-        if not found:
-            # If we didn't find a match, we can log a warning or raise an error
-            print(
-                f"Warning: No match found for annotation {annotation.reference} in events",
-                file=sys.stderr,
-            )
 
     return events
 
