@@ -63,6 +63,9 @@ def is_applicable(event: Transaction) -> bool:
     Determine if the given Transaction should be journalized.
     """
 
+    if event.reference == "4506496819439427381":
+        print("found")
+
     # If the from or to account are two "assets:truist" accounts, then we can journalize it.
     if event.from_account and event.from_account.startswith("assets:truist"):
         return True
@@ -70,14 +73,28 @@ def is_applicable(event: Transaction) -> bool:
     if event.to_account and event.to_account.startswith("assets:truist"):
         return True
 
-    if event.bank == "venmo":
-        if event.memo is None:
-            return False
+    if event.bank == "manual" or event.type == TxType.manual:
+        return True
 
+    # NOTE: Personal and HOA Venmo share the same account.
+    # We distinguish HOA transactions by requiring an HOA keyword in the memo.
+    # Members are instructed to include their lot number or "MBLA" in the memo.
+    if event.bank == "venmo" and event.memo is not None:
         memo_lower = event.memo.lower()
-        return any(keyword in memo_lower for keyword in config.VENMO_HOA_KEYWORDS)
+        if config.matches_hoa_keywords(memo_lower):
+            return True
 
-    return True
+    print(
+        event.type,
+        event.reference,
+        event.description,
+        event.memo,
+        event.amount,
+        event.from_account,
+        event.to_account,
+    )
+
+    return False
 
 
 def journal_entry_from_event(

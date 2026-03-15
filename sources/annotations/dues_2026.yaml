@@ -106,3 +106,15 @@ deposits:
 - id: dep-2026-23
   checks:
   - { check_date: 2026-03-07, check_number: 1022, name: Melissa Laign, amount: 50.00, invoice: 20262600 }
+
+- id: dep-2026-24
+  checks:
+  - { check_date: 2026-03-14, check_number: 4294, name: Clayton Rodgers, amount: 50.00, invoice: 20261500 }
+
+- id: dep-2026-25
+  checks:
+  - { check_date: 2026-03-15, check_number: 3315, name: Susan Bowyer, amount: 50.00, invoice: 20262900 }
+
+- id: dep-2026-26
+  checks:
+  - { check_date: 2026-03-15, check_number: 6512, name: Roger Efrid, amount: 50.00, invoice: 20263000 }

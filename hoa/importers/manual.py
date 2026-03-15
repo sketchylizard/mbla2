@@ -22,28 +22,19 @@ from hoa import config
 def _build_opening_postings(
     entry_account: str,
     equity_account: str,
-    amount: Decimal,  # positive = debit balance, negative = credit balance
+    amount: Decimal,
     opening_date: date,
+    invoice_override: str | None = None,  # NEW
 ) -> List[Posting]:
-    """
-    Build a balanced pair of postings for an opening balance entry.
-
-    The YAML uses debit/credit from the HOA's perspective:
-      debit:  normal asset balance (e.g. cash in bank, amounts owed to us)
-      credit: contra-asset balance (e.g. overpayment -- we owe them)
-
-    amount = debit - credit, so:
-      amount > 0  -> debit balance  -> positive posting in entry_account
-      amount < 0  -> credit balance -> negative posting in entry_account
-    """
     invoice = None
 
-    # If this is a receivables account, extract lot number and build invoice.
-    # Serial 99 is reserved for opening balance adjustments.
     match = re.match(r"assets:receivables:lot(\d+)", entry_account)
     if match:
         lot = int(match.group(1))
-        invoice = Invoice.create(year=opening_date.year, lot=lot, serial=99)
+        if invoice_override:
+            invoice = Invoice(invoice_override)
+        else:
+            invoice = Invoice.create(year=opening_date.year, lot=lot, serial=99)
 
     return [
         Posting(account=entry_account, amount=amount, invoice=invoice),
@@ -68,7 +59,11 @@ def extract_events(path: Path) -> List[Transaction]:
         entry_account = entry["account"]
 
         postings = _build_opening_postings(
-            entry_account, equity_account, amount, opening_date
+            entry_account,
+            equity_account,
+            amount,
+            opening_date,
+            invoice_override=entry.get("invoice"),
         )
 
         event = Transaction(

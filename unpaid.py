@@ -26,7 +26,6 @@ def get_dues_balances(db_path, fiscal_year: int) -> dict[int, int]:
             WHERE account LIKE 'assets:receivables:lot%'
               AND invoice LIKE ?
             GROUP BY lot
-            HAVING SUM(amount) > 0
         """,
             (f"{fiscal_year}%00",),
         )
@@ -64,12 +63,16 @@ def main():
 
     unpaid = []
     partial = []
+
     for lot_num in sorted(billable_lots):
-        total = payment_totals.get(lot_num, 0)
-        if total == 0:
+        total = payment_totals.get(
+            lot_num, full_dues
+        )  # not in results = never billed, treat as full dues owed
+        if total == full_dues:
             unpaid.append(lot_num)
-        elif total < full_dues:
+        elif total > 0:
             partial.append((lot_num, total))
+        # total == 0 means fully paid, skip
 
     if bcc_mode:
         emails = []
@@ -91,9 +94,10 @@ def main():
         for lot_num, total in partial:
             lot = directory.get_lot(lot_num)
             owners = ", ".join(lot.owners)
-            shortfall = (full_dues - total) / 100
+            paid = (full_dues - total) / 100
+            shortfall = total / 100
             print(
-                f"  Lot {lot_num:2d}: {owners} -- paid ${total / 100:.2f}, owes ${shortfall:.2f}"
+                f"  Lot {lot_num:2d}: {owners} -- paid ${paid:.2f}, owes ${shortfall:.2f}"
             )
 
 

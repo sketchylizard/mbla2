@@ -10,6 +10,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import List, Protocol
 from abc import ABC, abstractmethod
+
+import sys
 import yaml
 
 from hoa.models import Transaction, TxType, Posting, Invoice

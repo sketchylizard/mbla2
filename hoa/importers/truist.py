@@ -199,6 +199,20 @@ def transaction_from_csv_row(
                 source=Source(str(path), line_no),
             )
 
+        if re.search(r"INSURANCE FIRST INSURANCE", description, re.IGNORECASE):
+            return Transaction(
+                posted_date=posted_date,
+                amount=abs(amount),
+                type=TxType.debit,
+                bank="truist",
+                from_account=account,
+                to_account="expenses:insurance",
+                reference=reference,
+                description="First Insurance",
+                memo="Umbrella and D&O policies",
+                source=Source(str(path), line_no),
+            )
+
         return Transaction(
             posted_date=posted_date,
             amount=abs(amount),

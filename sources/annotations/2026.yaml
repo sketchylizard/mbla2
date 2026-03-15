@@ -2,3 +2,12 @@ transactions:
   # Venmo to Kim Stewart for certified letters
   - id: 4549884616929581061
     account: expenses:misc
+
+  - id: chk-2026-15
+    account: expenses:legal
+    description: BagwellBagwell Holt Smith P.A.
+    memo: Consultation on fines and leins
+
+  - id: YF6CT-Y532S
+    account: expenses:misc
+    description: Entrance light, solar, 12-20 months life, From EarthTech Products, Inc.

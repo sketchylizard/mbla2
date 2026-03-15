@@ -4,6 +4,7 @@ from pathlib import Path
 from decimal import Decimal
 
 import locale
+import re
 
 # Project root = parent of this file (assuming config.py is in hoa/)
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
@@ -29,6 +30,7 @@ VENMO_HOA_KEYWORDS = [
     "loa",
     "lonna",
     "lot",
+    "lots",
     "mbhoa",
     "mbla",
     "mbloa",
@@ -51,3 +53,13 @@ LATE_FEE = {
 START_YEAR = 2024
 # Set locale (do once at startup)
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
+
+import re
+
+
+def matches_hoa_keywords(memo: str) -> bool:
+    memo_lower = memo.lower()
+    return any(
+        re.search(r"\b" + re.escape(keyword) + r"\b", memo_lower)
+        for keyword in VENMO_HOA_KEYWORDS
+    )

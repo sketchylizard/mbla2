@@ -12,6 +12,14 @@ balances:
   
   # Prepayments (what we owe homeowners - negative receivable)
   - account: "assets:receivables:lot01"
-    credit: 450.00    # Credit = negative receivable
-    invoice: "00000100"
-    note: "Prepaid through 2025"
+    credit: 150.00
+    invoice: "20240100"
+    note: "Prepaid FY2024"
+  - account: "assets:receivables:lot01"
+    credit: 150.00
+    invoice: "20250100"
+    note: "Prepaid FY2025"
+  - account: "assets:receivables:lot01"
+    credit: 150.00
+    invoice: "20260100"
+    note: "Prepaid FY2026 (partial)"
