@@ -97,7 +97,7 @@ deposits:
 
 - id: dep-2026-21
   checks:
-  - { check_date: 2026-02-24, check_number: 3465, name: Elain Jabbour, amount: 50.00, invoice: 20263500 }  
+  - { check_date: 2026-02-24, check_number: 3465, name: Elaine Jabbour, amount: 50.00, invoice: 20263500 }  
 
 - id: dep-2026-22
   checks:
