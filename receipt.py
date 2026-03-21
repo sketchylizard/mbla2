@@ -117,7 +117,8 @@ def load_receipt_data(
             j.memo,
             j.reference,
             p.account,
-            p.amount
+            p.amount,
+            p.reference AS posting_reference
         FROM posting p
         JOIN journal_entry j ON j.journal_id = p.journal_id
         WHERE p.invoice = ?
@@ -140,7 +141,8 @@ def load_receipt_data(
         posted_date = date.fromisoformat(row["posted_date"])
         description = row["description"] or ""
         memo = row["memo"] or ""
-        reference = row["reference"]
+        entry_reference = row["reference"]
+        posting_reference = row["posting_reference"]
 
         # --- Determine method and description ---
         if jtype == "manual":
@@ -148,20 +150,25 @@ def load_receipt_data(
             method = "Dues charge"
             display_desc = f"Annual dues {inv.year}"
             ref_display = None
-        elif reference and reference.startswith("chk-"):
+        elif entry_reference and entry_reference.startswith("chk-"):
             # Truist bank-issued check reference like "chk-2025-042"
             method = "Check"
-            ref_display = reference
+            ref_display = entry_reference
             display_desc = f"Payment by check"
-        elif reference and reference.isdigit() and len(reference) < 6:
+        elif posting_reference:
+            method = "Check"
+            num = posting_reference.lstrip("#").strip()
+            ref_display = f"Check #{num}"
+            display_desc = "Payment by check"
+        elif entry_reference and entry_reference.isdigit() and len(entry_reference) < 6:
             # Simple check number
             method = "Check"
-            ref_display = f"Check #{reference}"
+            ref_display = f"Check #{entry_reference}"
             display_desc = f"Payment by check"
         elif jtype == "deposit":
             # Multi-check deposit — reference is like dep-2026-01
             method = "Check"
-            ref_display = reference
+            ref_display = entry_reference
             # description might be "Deposit from FirstName LastName"
             display_desc = description or "Payment by check"
         elif row["type"] == "credit" and memo:
@@ -173,11 +180,11 @@ def load_receipt_data(
                 display_desc += f" — {memo[:60]}"
         elif jtype in ("credit", "debit"):
             method = "Payment"
-            ref_display = reference
+            ref_display = entry_reference
             display_desc = description or "Payment"
         else:
             method = jtype.capitalize()
-            ref_display = reference
+            ref_display = entry_reference
             display_desc = description or method
 
         lines.append(

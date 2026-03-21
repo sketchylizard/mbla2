@@ -5,9 +5,12 @@ transactions:
 
   - id: chk-2026-15
     account: expenses:legal
-    description: BagwellBagwell Holt Smith P.A.
+    description: Bagwell Holt Smith P.A.
     memo: Consultation on fines and leins
 
   - id: YF6CT-Y532S
     account: expenses:misc
     description: Entrance light, solar, 12-20 months life, From EarthTech Products, Inc.
+
+  - id: 4553727353957367881
+    memo: Refreshments for 2026 annual meeting
