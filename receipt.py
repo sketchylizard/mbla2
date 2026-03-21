@@ -426,6 +426,11 @@ def main() -> int:
         help="Generate receipts for all lots with activity",
     )
     parser.add_argument(
+        "--paid-only",
+        action="store_true",
+        help="Only generate receipts for fully paid invoices",
+    )
+    parser.add_argument(
         "--year",
         type=int,
         default=date.today().year,
@@ -463,6 +468,10 @@ def main() -> int:
             receipt = load_receipt_data(config.DATABASE, inv_str, directory)
             if receipt is None:
                 print(f"  SKIP  {inv_str} — no data in database")
+                skipped += 1
+                continue
+
+            if args.paid_only and receipt.balance_due != 0:
                 skipped += 1
                 continue
 
