@@ -171,13 +171,10 @@ def load_receipt_data(
             ref_display = entry_reference
             # description might be "Deposit from FirstName LastName"
             display_desc = description or "Payment by check"
-        elif row["type"] == "credit" and memo:
-            # Venmo payment — memo is the Venmo note
+        elif jtype == "credit" and memo:
             method = "Venmo"
             ref_display = None
-            display_desc = f"Payment via Venmo"
-            if memo:
-                display_desc += f" — {memo[:60]}"
+            display_desc = "Payment via Venmo"
         elif jtype in ("credit", "debit"):
             method = "Payment"
             ref_display = entry_reference
