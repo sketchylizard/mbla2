@@ -14,3 +14,4 @@ transactions:
 
   - id: 4553727353957367881
     memo: Refreshments for 2026 annual meeting
+    account: expenses:misc

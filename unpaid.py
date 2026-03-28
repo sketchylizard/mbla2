@@ -74,28 +74,28 @@ def main():
             partial.append((lot_num, total))
         # total == 0 means fully paid, skip
 
-    if bcc_mode:
-        emails = []
-        for lot_num in unpaid:
-            lot = directory.get_lot(lot_num)
-            emails.extend(lot.emails)
-        print(", ".join(emails))
-    else:
-        print(f"Dues status for {fiscal_year} (full dues: ${full_dues / 100:.2f})\n")
+    print(f"Dues status for {fiscal_year} (full dues: ${full_dues / 100:.2f})\n")
 
-        print(f"Unpaid ({len(unpaid)} lots):")
-        for lot_num in unpaid:
-            lot = directory.get_lot(lot_num)
-            owners = ", ".join(lot.owners)
-            emails = ", ".join(lot.emails) if lot.emails else "no email on file"
+    print(f"Unpaid ({len(unpaid)} lots):")
+    for lot_num in unpaid:
+        lot = directory.get_lot(lot_num)
+        owners = ", ".join(lot.owners)
+        emails = ", ".join(lot.emails) if lot.emails else "no email on file"
+        if bcc_mode:
+            print(f"  {emails},")
+        else:
             print(f"  Lot {lot_num:2d}: {owners} <{emails}>")
 
-        print(f"\nPartial ({len(partial)} lots):")
-        for lot_num, total in partial:
-            lot = directory.get_lot(lot_num)
-            owners = ", ".join(lot.owners)
-            paid = (full_dues - total) / 100
-            shortfall = total / 100
+    print(f"\nPartial ({len(partial)} lots):")
+    for lot_num, total in partial:
+        lot = directory.get_lot(lot_num)
+        owners = ", ".join(lot.owners)
+        emails = ", ".join(lot.emails) if lot.emails else "no email on file"
+        paid = (full_dues - total) / 100
+        shortfall = total / 100
+        if bcc_mode:
+            print(f"  {emails},")
+        else:
             print(
                 f"  Lot {lot_num:2d}: {owners} -- paid ${paid:.2f}, owes ${shortfall:.2f}"
             )

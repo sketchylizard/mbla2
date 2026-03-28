@@ -118,3 +118,11 @@ deposits:
 - id: dep-2026-26
   checks:
   - { check_date: 2026-03-15, check_number: 6512, name: Roger Efrid, amount: 50.00, invoice: 20263000 }
+
+- id: dep-2026-27
+  checks:
+  - { check_date: 2026-03-25, check_number: 1075, name: Judi Helsing, amount: 50.00, invoice: 20262800 }
+
+- id: dep-2026-28
+  checks:
+  - { check_date: 2026-03-23, check_number: 977870, name: Brenda Caverly, amount: 50.00, invoice: 20262300 }
